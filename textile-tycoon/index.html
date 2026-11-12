@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TEXTILE TYCOON</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,sans-serif;background:#12161c;color:#eef3f7}
+  #wrap{display:flex;height:100vh}
+  #side{width:320px;padding:14px;background:#1a222c;overflow-y:auto;border-right:2px solid #2c3947}
+  h1{margin:0 0 4px;font-size:22px;color:#ffd75e;letter-spacing:1px}
+  h2{margin:16px 0 6px;font-size:14px;color:#8fd0ff;text-transform:uppercase;letter-spacing:1px}
+  .stats{background:#0e141b;padding:10px;border-radius:8px;font-size:13px;line-height:1.55}
+  .btn{display:block;width:100%;margin:5px 0;padding:8px 10px;border:0;border-radius:6px;
+       background:#26374a;color:#eef3f7;cursor:pointer;font-size:13px;text-align:left}
+  .btn:hover{background:#33475d}
+  .btn.active{background:#ffd75e;color:#1a222c;font-weight:700}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .small{font-size:11px;color:#9fb3c4;margin:8px 0}
+  .order{background:#0e141b;border:1px solid #2c3947;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+  .order b{color:#ffd75e}
+  #main{flex:1;position:relative}
+  canvas{display:block;width:100%;height:100%}
+  #panel{position:absolute;right:12px;top:12px;width:250px;background:#0e141be6;
+         border:1px solid #2c3947;border-radius:8px;padding:10px;font-size:13px;display:none}
+  #log{position:absolute;left:12px;bottom:12px;max-width:60%;background:#0e141bd9;
+       padding:8px 12px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="side">
+    <h1>TEXTILE TYCOON</h1>
+    <div class="small">Build a textile empire: spin yarn, weave fabric, dye it, sew garments, and fulfill orders.</div>
+    <div class="stats" id="stats"></div>
+
+    <h2>Build</h2>
+    <button class="btn active" data-tool="select">🖐 Select Machine</button>
+    <button class="btn" data-tool="spinner">🧵 Spinning Machine — $1,200</button>
+    <button class="btn" data-tool="loom">🕸️ Weaving Loom — $1,800</button>
+    <button class="btn" data-tool="dye">🎨 Dye Vat — $1,500</button>
+    <button class="btn" data-tool="sewer">🪡 Sewing Station — $2,500</button>
+    <button class="btn" data-tool="demolish">💥 Demolish — refund 25%</button>
+
+    <h2>Operations</h2>
+    <button class="btn" id="buyCotton">🧺 Buy 10 Cotton Bales</button>
+    <button class="btn" id="hire">👷 Hire Worker — $800</button>
+    <button class="btn" id="fire">👋 Fire Worker — refund $400</button>
+    <button class="btn" id="sellGarments">📦 Sell 10 Garments</button>
+    <button class="btn" id="pause">⏸ Pause / Resume</button>
+    <button class="btn" id="save">💾 Save Game</button>
+    <button class="btn" id="load">📂 Load Game</button>
+    <button class="btn" id="reset">🔄 New Game</button>
+
+    <h2>Orders</h2>
+    <div id="orders"></div>
+  </div>
+
+  <div id="main">
+    <canvas id="c"></canvas>
+    <div id="panel"></div>
+    <div id="log">Welcome to TEXTILE TYCOON. Build a Spinning Machine, buy cotton, and hire your first worker.</div>
+  </div>
+</div>
+
+<script>
+const MW=18, MH=11;
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let cellW, cellH, tool='select', selected=null;
+
+const MACH={
+  spinner:{name:'Spinning Machine',cost:1200,input:'cotton',output:'yarn',time:6,color:'#c9a86a',icon:'🧵'},
+  loom:{name:'Weaving Loom',cost:1800,input:'yarn',output:'fabric',time:8,color:'#7fa8c9',icon:'🕸️'},
+  dye:{name:'Dye Vat',cost:1500,input:'fabric',output:'dyedFabric',time:7,color:'#9b6cc9',icon:'🎨'},
+  sewer:{name:'Sewing Station',cost:2500,input:'dyedFabric',output:'garment',time:10,color:'#e08a9b',icon:'🪡'}
+};
+
+const NAMES={
+  cotton:'Cotton Bales', yarn:'Yarn', fabric:'Fabric',
+  dyedFabric:'Dyed Fabric', garment:'Garments'
+};
+
+function newState(){
+  return {
+    grid:Array.from({length:MH},()=>Array(MW).fill(null)),
+    machines:[], workers:1, money:20000, day:1, time:0, tick:0,
+    inv:{cotton:20,yarn:0,fabric:0,dyedFabric:0,garment:0},
+    orders:[], nextOrder:1, reputation:50,
+    cottonPrice:40, garmentPrice:24, paused:false, nextId:1, totalRevenue:0
+  };
+}
+
+function log(t){ document.getElementById('log').textContent=t; }
+
+function saveGame(){
+  localStorage.setItem('textileTycoonSave',JSON.stringify(state));
+  log('Game saved.');
+}
+function loadGame(){
+  const s=localStorage.getItem('textileTycoonSave');
+  if(!s){ log('No saved game found.'); return; }
+  state=JSON.parse(s); selected=null;
+  document.getElementById('panel').style.display='none';
+  log('Game loaded.');
+}
+function newGame(){
+  state=newState(); selected=null;
+  document.getElementById('panel').style.display='none';
+  log('New game started. Build a Spinning Machine to begin.');
+}
+
+/* ---------- Building ---------- */
+
+function placeMachine(type,x,y){
+  const def=MACH[type];
+  if(state.money<def.cost){ log('Not enough money.'); return; }
+  if(state.grid[y][x]){ log('Tile occupied.'); return; }
+  state.money-=def.cost;
+  const m={id:state.nextId++,type,x,y,level:1,progress:0,broken:false,input:0,output:0};
+  state.machines.push(m);
+  state.grid[y][x]=m.id;
+  log(def.name+' built for $'+def.cost+'.');
+}
+
+function demolish(x,y){
+  const id=state.grid[y][x];
+  if(!id) return;
+  const m=state.machines.find(v=>v.id===id);
+  if(!m) return;
+  state.money+=Math.floor(MACH[m.type].cost*0.25);
+  state.machines=state.machines.filter(v=>v.id!==id);
+  state.grid[y][x]=null;
+  if(selected===m) selected=null;
+  log('Machine demolished. 25% refund issued.');
+}
+
+/* ---------- Simulation ---------- */
+
+function assignWorkers(){
+  let available=state.workers;
+  for(const m of state.machines){
+    m.worker=available>0;
+    if(m.worker) available--;
+  }
+}
+
+function updateMachines(dt){
+  assignWorkers();
+  for(const m of state.machines){
+    const def=MACH[m.type];
+    if(m.broken||!m.worker) continue;
+    if(m.input<=0){
+      if(state.inv[def.input]>0){
+        state.inv[def.input]--;
+        m.input++;
+      } else continue;
+    }
+    const speed=(1+0.25*(m.level-1));
+    m.progress+=dt*speed;
+    if(m.progress>=def.time){
+      m.progress=0;
+      m.input--;
+      state.inv[def.output]++;
+    }
+  }
+}
+
+function updateEconomy(dt){
+  state.time+=dt;
+  if(state.time<30) return;
+  state.time=0;
+  state.day++;
+
+  // wages and rent
+  const wages=state.workers*120;
+  const rent=200+state.machines.length*40;
+  state.money-=wages+rent;
+
+  // market drift
+  state.cottonPrice=Math.max(25,Math.min(70,state.cottonPrice+(Math.random()*8-4)));
+  state.garmentPrice=Math.max(15,Math.min(40,state.garmentPrice+(Math.random()*5-2.5)));
+
+  // random breakdowns
+  for(const m of state.machines){
+    if(!m.broken&&Math.random()<0.03){
+      m.broken=true;
+      log(MACH[m.type].name+' broke down! Repair it from the machine panel.');
+    }
+  }
+
+  // new orders
+  if(state.orders.length<5&&Math.random()<0.55){
+    const qty=5+Math.floor(Math.random()*16);
+    const reward=Math.round(qty*state.garmentPrice*1.35+Math.random()*200);
+    state.orders.push({
+      id:state.nextOrder++, qty, reward,
+      deadline:state.day+3+Math.floor(Math.random()*4)
+    });
+    log('New order received: '+qty+' garments for $'+reward+'.');
+  }
+
+  // expire orders
+  state.orders=state.orders.filter(o=>{
+    if(o.deadline<state.day){
+      state.reputation=Math.max(0,state.reputation-8);
+      log('Order #'+o.id+' expired. Reputation fell.');
+      return false;
+    }
+    return true;
+  });
+
+  if(state.money<0) log('Warning: negative cash. Sell garments or fulfill orders.');
+}
+
+/* ---------- Actions ---------- */
+
+function buyCotton(){
+  const cost=10*state.cottonPrice;
+  if(state.money<cost){ log('Not enough money for cotton.'); return; }
+  state.money-=cost;
+  state.inv.cotton+=10;
+  log('Bought 10 cotton bales for $'+cost+'.');
+}
+
+function hireWorker(){
+  if(state.money<800){ log('Not enough money to hire.'); return; }
+  state.money-=800;
+  state.workers++;
+  log('Worker hired. Total workers: '+state.workers+'.');
+}
+
+function fireWorker(){
+  if(state.workers<=0){ log('No workers to fire.'); return; }
+  state.workers--;
+  state.money+=400;
+  log('Worker dismissed. $400 severance recovered.');
+}
+
+function sellGarments(){
+  if(state.inv.garment<10){ log('Need at least 10 garments to sell.'); return; }
+  const revenue=10*state.garmentPrice;
+  state.inv.garment-=10;
+  state.money+=revenue;
+  state.totalRevenue+=revenue;
+  log('Sold 10 garments for $'+revenue+'.');
+}
+
+function deliverOrder(id){
+  const o=state.orders.find(v=>v.id===id);
+  if(!o) return;
+  if(state.inv.garment<o.qty){ log('Not enough garments for order #'+id+'.'); return; }
+  state.inv.garment-=o.qty;
+  state.money+=o.reward;
+  state.totalRevenue+=o.reward;
+  state.reputation=Math.min(100,state.reputation+4);
+  state.orders=state.orders.filter(v=>v.id!==id);
+  log('Order #'+id+' delivered! Earned $'+o.reward+'.');
+}
+
+function upgradeMachine(m){
+  const cost=Math.floor(MACH[m.type].cost*0.6*m.level);
+  if(m.level>=5){ log('Machine already at maximum level.'); return; }
+  if(state.money<cost){ log('Not enough money to upgrade.'); return; }
+  state.money-=cost;
+  m.level++;
+  log(MACH[m.type].name+' upgraded to level '+m.level+'.');
+}
+
+function repairMachine(m){
+  const cost=300+100*m.level;
+  if(!m.broken){ log('Machine is already working.'); return; }
+  if(state.money<cost){ log('Not enough money to repair.'); return; }
+  state.money-=cost;
+  m.broken=false;
+  m.progress=0;
+  log(MACH[m.type].name+' repaired for $'+cost+'.');
+}
+
+/* ---------- UI ---------- */
+
+function updateStats(){
+  const idle=state.machines.filter(m=>!m.worker).length;
+  document.getElementById('stats').innerHTML=
+    '<b>Day '+state.day+'</b><br>'+
+    'Cash: <b>$'+Math.round(state.money)+'</b><br>'+
+    'Workers: <b>'+state.workers+'</b> (idle machines: '+idle+')<br>'+
+    'Reputation: <b>'+Math.round(state.reputation)+'/100</b><br>'+
+    'Cotton price: <b>$'+state.cottonPrice.toFixed(0)+'</b><br>'+
+    'Garment price: <b>$'+state.garmentPrice.toFixed(0)+'</b><br>'+
+    'Revenue earned: <b>$'+Math.round(state.totalRevenue)+'</b><br><br>'+
+    'Cotton: '+state.inv.cotton+'<br>'+
+    'Yarn: '+state.inv.yarn+'<br>'+
+    'Fabric: '+state.inv.fabric+'<br>'+
+    'Dyed Fabric: '+state.inv.dyedFabric+'<br>'+
+    'Garments: '+state.inv.garment;
+}
+
+function updateOrders(){
+  const el=document.getElementById('orders');
+  if(!state.orders.length){
+    el.innerHTML='<div class="small">No active orders. Keep producing garments.</div>';
+    return;
+  }
+  el.innerHTML=state.orders.map(o=>
+    '<div class="order">Order #'+o.id+'<br>'+
+    '<b>'+o.qty+' garments</b> — $'+o.reward+'<br>'+
+    'Due: Day '+o.deadline+'<br>'+
+    '<button class="btn" onclick="deliverOrder('+o.id+')" '+
+    (state.inv.garment>=o.qty?'':'disabled')+'>'+
+    '📦 Deliver</button></div>'
+  ).join('');
+}
+
+function showPanel(m){
+  const p=document.getElementById('panel');
+  const def=MACH[m.type];
+  const upCost=Math.floor(def.cost*0.6*m.level);
+  const repairCost=300+100*m.level;
+  p.style.display='block';
+  p.innerHTML=
+    '<b>'+def.name+' #'+m.id+'</b><br>'+
+    'Level: '+m.level+'/5<br>'+
+    'Status: '+(m.broken?'<span style="color:#ff6b6b">Broken</span>':
+      m.worker?'<span style="color:#7fe08a">Working</span>':'<span style="color:#ffd75e">No worker</span>')+'<br>'+
+    'Input: '+NAMES[def.input]+'<br>'+
+    'Output: '+NAMES[def.output]+'<br>'+
+    'Progress: '+Math.round(m.progress/def.time*100)+'%<br><br>'+
+    '<button class="btn" onclick="upgradeSelected()">⬆ Upgrade — $'+upCost+'</button>'+
+    '<button class="btn" onclick="repairSelected()">🔧 Repair — $'+repairCost+'</button>'+
+    '<button class="btn" onclick="closePanel()">✖ Close</button>';
+}
+
+window.upgradeSelected=()=>{ if(selected) upgradeMachine(selected); };
+window.repairSelected=()=>{ if(selected) repairMachine(selected); };
+window.closePanel=()=>{ selected=null; document.getElementById('panel').style.display='none'; };
+window.deliverOrder=deliverOrder;
+
+/* ---------- Rendering ---------- */
+
+function resize(){
+  const r=canvas.parentElement.getBoundingClientRect();
+  canvas.width=r.width; canvas.height=r.height;
+  cellW=canvas.width/MW; cellH=canvas.height/MH;
+}
+window.addEventListener('resize',resize);
+
+function draw(){
+  ctx.fillStyle='#24303b'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
+    const px=x*cellW, py=y*cellH;
+    ctx.fillStyle=(x+y)%2?'#2b3a47':'#273542';
+    ctx.fillRect(px,py,cellW,cellH);
+    ctx.strokeStyle='#1c2733';
+    ctx.strokeRect(px+.5,py+.5,cellW-1,cellH-1);
+  }
+
+  for(const m of state.machines){
+    const def=MACH[m.type];
+    const px=m.x*cellW, py=m.y*cellH;
+    ctx.fillStyle=m.broken?'#5a3b3b':def.color;
+    ctx.fillRect(px+2,py+2,cellW-4,cellH-4);
+
+    ctx.font=Math.floor(cellH*0.5)+'px serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(def.icon,px+cellW/2,py+cellH*0.42);
+
+    // progress bar
+    const pct=Math.min(1,m.progress/def.time);
+    ctx.fillStyle='#00000066';
+    ctx.fillRect(px+4,py+cellH-8,cellW-8,4);
+    ctx.fillStyle='#7fe08a';
+    ctx.fillRect(px+4,py+cellH-8,(cellW-8)*pct,4);
+
+    if(!m.worker&&!m.broken){
+      ctx.fillStyle='#ffd75e';
+      ctx.font='bold '+Math.floor(cellH*0.28)+'px sans-serif';
+      ctx.fillText('NO WORKER',px+cellW/2,py+cellH*0.78);
+    }
+    if(selected===m){
+      ctx.strokeStyle='#ffd75e'; ctx.lineWidth=3;
+      ctx.strokeRect(px+2,py+2,cellW-4,cellH-4);
+      ctx.lineWidth=1;
+    }
+  }
+}
+
+/* ---------- Input ---------- */
+
+document.querySelectorAll('.btn[data-tool]').forEach(btn=>{
+  btn.onclick=()=>{
+    tool=btn.dataset.tool;
+    document.querySelectorAll('.btn[data-tool]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    log('Selected: '+btn.textContent.trim());
+  };
+});
+
+canvas.addEventListener('click',e=>{
+  const r=canvas.getBoundingClientRect();
+  const x=Math.floor((e.clientX-r.left)/cellW);
+  const y=Math.floor((e.clientY-r.top)/cellH);
+  if(x<0||y<0||x>=MW||y>=MH) return;
+
+  const id=state.grid[y][x];
+
+  if(tool==='select'){
+    if(id){
+      selected=state.machines.find(m=>m.id===id);
+      if(selected) showPanel(selected);
+    } else {
+      closePanel();
+    }
+    return;
+  }
+
+  if(tool==='demolish'){ demolish(x,y); return; }
+
+  if(MACH[tool]) placeMachine(tool,x,y);
+});
+
+document.getElementById('buyCotton').onclick=buyCotton;
+document.getElementById('hire').onclick=hireWorker;
+document.getElementById('fire').onclick=fireWorker;
+document.getElementById('sellGarments').onclick=sellGarments;
+document.getElementById('pause').onclick=()=>{ state.paused=!state.paused; };
+document.getElementById('save').onclick=saveGame;
+document.getElementById('load').onclick=loadGame;
+document.getElementById('reset').onclick=()=>{ newGame(); };
+
+/* ---------- Main loop ---------- */
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(0.1,(now-last)/1000);
+  last=now;
+
+  if(!state.paused){
+    state.tick++;
+    updateMachines(dt);
+    updateEconomy(dt);
+  }
+
+  draw();
+  updateStats();
+  updateOrders();
+  if(selected) showPanel(selected);
+
+  requestAnimationFrame(loop);
+}
+
+newGame();
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

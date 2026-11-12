@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Park Tycoon</title>
+<style>
+  body{margin:0;font-family:system-ui,sans-serif;background:#101820;color:#eaf2f8;display:flex}
+  #side{width:240px;padding:12px;background:#16222e}
+  h1{font-size:20px;color:#ffd75e;margin:0 0 10px}
+  .stats{background:#0d151d;padding:8px;border-radius:6px;font-size:13px;margin-bottom:10px}
+  button{display:block;width:100%;margin:4px 0;padding:8px;border:0;border-radius:5px;
+    background:#243647;color:#fff;cursor:pointer;font-size:13px;text-align:left}
+  button.active{background:#ffd75e;color:#16222e;font-weight:bold}
+  #msg{font-size:12px;color:#9fb3c4;margin-top:8px;min-height:32px}
+  canvas{display:block;background:#20303c}
+</style>
+</head>
+<body>
+
+<div id="side">
+  <h1>🎢 Park Tycoon</h1>
+  <div class="stats" id="stats"></div>
+
+  <button class="active" data-tool="path">🛤 Path — $20</button>
+  <button data-tool="tree">🌳 Tree — $30</button>
+  <button data-tool="food">🍔 Food — $350</button>
+  <button data-tool="drink">🥤 Drink — $250</button>
+  <button data-tool="bathroom">🚻 Bathroom — $200</button>
+  <button data-tool="carousel">🎠 Carousel — $800</button>
+  <button data-tool="ferris">🎡 Ferris Wheel — $1,500</button>
+  <button data-tool="coaster">🎢 Coaster Track — $100</button>
+  <button data-tool="demolish">💥 Demolish</button>
+
+  <div id="msg">Build paths from the entrance, then add rides and stalls beside them.</div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const W=24, H=16, TILE=32;
+const canvas=document.getElementById('game');
+canvas.width=W*TILE;
+canvas.height=H*TILE;
+const ctx=canvas.getContext('2d');
+
+const ENTRANCE={x:0,y:8};
+
+const RIDES={
+  carousel:{name:'Carousel',cost:800,price:6,fun:15,icon:'🎠',color:'#e05c7a'},
+  ferris:{name:'Ferris Wheel',cost:1500,price:10,fun:22,icon:'🎡',color:'#7f6cf0'}
+};
+
+const SHOPS={
+  food:{name:'Food Stall',cost:350,price:6,need:'hunger',icon:'🍔',color:'#e8a13a'},
+  drink:{name:'Drink Stall',cost:250,price:4,need:'thirst',icon:'🥤',color:'#3fa7d6'},
+  bathroom:{name:'Bathroom',cost:200,price:2,need:'toilet',icon:'🚻',color:'#7fc8a9'}
+};
+
+let grid=[], guests=[], buildings=[], money=10000, tick=0, tool='path';
+
+function log(text){
+  document.getElementById('msg').textContent=text;
+}
+
+function init(){
+  grid=[];
+  for(let y=0;y<H;y++){
+    grid.push(new Array(W).fill(0));
+  }
+  for(let x=0;x<3;x++){
+    grid[ENTRANCE.y][x]=1;
+  }
+  guests=[];
+  buildings=[];
+  money=10000;
+  tick=0;
+
+  for(let i=0;i<5;i++){
+    spawnGuest();
+  }
+
+  log('Welcome! Build paths from the entrance, then add rides and stalls.');
+}
+
+function spawnGuest(){
+  guests.push({
+    x:ENTRANCE.x,
+    y:ENTRANCE.y,
+    happiness:80,
+    hunger:20,
+    thirst:20,
+    toilet:10,
+    money:30+Math.random()*50,
+    cool:0,
+    color:'hsl('+Math.floor(Math.random()*360)+',70%,60%)'
+  });
+}
+
+function inside(x,y){
+  return x>=0 && y>=0 && x<W && y<H;
+}
+
+function adjacentPath(x,y){
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(let i=0;i<dirs.length;i++){
+    const nx=x+dirs[i][0];
+    const ny=y+dirs[i][1];
+    if(inside(nx,ny) && grid[ny][nx]===1){
+      return true;
+    }
+  }
+  return false;
+}
+
+function adjacentCoaster(x,y){
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  for(let i=0;i<dirs.length;i++){
+    const nx=x+dirs[i][0];
+    const ny=y+dirs[i][1];
+    if(inside(nx,ny) && grid[ny][nx]===4){
+      return true;
+    }
+  }
+  return false;
+}
+
+function coasterCount(){
+  let total=0;
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      if(grid[y][x]===4){
+        total++;
+      }
+    }
+  }
+  return total;
+}
+
+function buildAt(x,y){
+  if(tool==='demolish'){
+    if(grid[y][x]===1 || grid[y][x]===2 || grid[y][x]===4){
+      grid[y][x]=0;
+      money+=10;
+      log('Tile removed.');
+    }
+    return;
+  }
+
+  if(tool==='path'){
+    if(grid[y][x]===0 && money>=20){
+      grid[y][x]=1;
+      money-=20;
+    }
+    return;
+  }
+
+  if(tool==='tree'){
+    if(grid[y][x]===0 && money>=30){
+      grid[y][x]=2;
+      money-=30;
+    }
+    return;
+  }
+
+  if(tool==='coaster'){
+    if(grid[y][x]===0 && money>=100){
+      grid[y][x]=4;
+      money-=100;
+    }
+    return;
+  }
+
+  const def=RIDES[tool] || SHOPS[tool];
+  if(!def){
+    return;
+  }
+
+  if(grid[y][x]!==0){
+    log('That tile is occupied.');
+    return;
+  }
+
+  if(!adjacentPath(x,y)){
+    log('Place it beside a path.');
+    return;
+  }
+
+  if(money<def.cost){
+    log('Not enough money.');
+    return;
+  }
+
+  money-=def.cost;
+  buildings.push({type:tool,x:x,y:y,cool:0});
+  log(def.name+' built.');
+}
+
+function updateGuests(){
+  for(let i=0;i<guests.length;i++){
+    const g=guests[i];
+
+    g.hunger=Math.min(100,g.hunger+1);
+    g.thirst=Math.min(100,g.thirst+1.2);
+    g.toilet=Math.min(100,g.toilet+0.8);
+    g.happiness=Math.max(0,g.happiness-0.3);
+
+    if(g.cool>0){
+      g.cool--;
+    }
+
+    let target=null;
+
+    if(g.toilet>70){
+      target=findBuilding(g.x,g.y,'bathroom');
+    } else if(g.hunger>70){
+      target=findBuilding(g.x,g.y,'food');
+    } else if(g.thirst>70){
+      target=findBuilding(g.x,g.y,'drink');
+    }
+
+    if(!target && g.cool<=0){
+      target=findBuilding(g.x,g.y,'carousel');
+    }
+    if(!target && g.cool<=0){
+      target=findBuilding(g.x,g.y,'ferris');
+    }
+    if(!target && g.cool<=0 && adjacentCoaster(g.x,g.y)){
+      target={type:'coaster'};
+    }
+
+    if(target && g.cool<=0){
+      let def=null;
+
+      if(target.type==='coaster'){
+        def={price:8,fun:Math.min(40,5+coasterCount()*0.5)};
+      } else {
+        def=RIDES[target.type] || SHOPS[target.type];
+      }
+
+      if(def && g.money>=def.price){
+        g.money-=def.price;
+        money+=def.price;
+
+        if(SHOPS[target.type]){
+          g[SHOPS[target.type].need]=0;
+        } else {
+          g.happiness=Math.min(100,g.happiness+def.fun);
+        }
+
+        g.cool=20;
+      }
+    }
+
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    const options=[];
+
+    for(let j=0;j<dirs.length;j++){
+      const nx=g.x+dirs[j][0];
+      const ny=g.y+dirs[j][1];
+
+      if(inside(nx,ny) && grid[ny][nx]===1){
+        options.push(dirs[j]);
+      }
+    }
+
+    if(options.length>0){
+      const choice=options[Math.floor(Math.random()*options.length)];
+      g.x+=choice[0];
+      g.y+=choice[1];
+    }
+
+    if(g.happiness<15 || g.money<2){
+      g.leaving=true;
+    }
+  }
+
+  guests=guests.filter(function(g){
+    return !g.leaving;
+  });
+}
+
+function findBuilding(x,y,type){
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+
+  for(let i=0;i<dirs.length;i++){
+    const nx=x+dirs[i][0];
+    const ny=y+dirs[i][1];
+
+    if(!inside(nx,ny)){
+      continue;
+    }
+
+    for(let j=0;j<buildings.length;j++){
+      if(buildings[j].x===nx && buildings[j].y===ny && buildings[j].type===type){
+        return buildings[j];
+      }
+    }
+  }
+
+  return null;
+}
+
+function update(dt){
+  tick+=dt;
+
+  if(tick>0.5){
+    tick=0;
+    updateGuests();
+
+    if(guests.length<40 && Math.random()<0.3){
+      spawnGuest();
+    }
+  }
+}
+
+function draw(){
+  ctx.fillStyle='#20303c';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const value=grid[y][x];
+      let color='#3d7a4a';
+
+      if(value===1){
+        color='#b9a37e';
+      } else if(value===2){
+        color='#2f6b3a';
+      } else if(value===4){
+        color='#8a5a2b';
+      }
+
+      ctx.fillStyle=color;
+      ctx.fillRect(x*TILE,y*TILE,TILE-1,TILE-1);
+
+      if(value===2){
+        ctx.fillStyle='#1f4d29';
+        ctx.beginPath();
+        ctx.arc(x*TILE+TILE/2,y*TILE+TILE/2,8,0,Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+
+  for(let i=0;i<buildings.length;i++){
+    const b=buildings[i];
+    const def=RIDES[b.type] || SHOPS[b.type];
+
+    ctx.fillStyle=def.color;
+    ctx.fillRect(b.x*TILE,b.y*TILE,TILE-1,TILE-1);
+
+    ctx.font='20px serif';
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(def.icon,b.x*TILE+TILE/2,b.y*TILE+TILE/2);
+  }
+
+  ctx.fillStyle='#ffd75e';
+  ctx.fillRect(ENTRANCE.x*TILE,ENTRANCE.y*TILE,TILE,TILE);
+
+  ctx.fillStyle='#16222e';
+  ctx.font='bold 10px sans-serif';
+  ctx.fillText('IN',ENTRANCE.x*TILE+TILE/2,ENTRANCE.y*TILE+TILE/2);
+
+  for(let i=0;i<guests.length;i++){
+    const g=guests[i];
+
+    ctx.fillStyle=g.color;
+    ctx.beginPath();
+    ctx.arc(g.x*TILE+TILE/2,g.y*TILE+TILE/2,5,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+function updateStats(){
+  const happiness=guests.length ? guests.reduce(function(total,g){
+    return total+g.happiness;
+  },0)/guests.length : 70;
+
+  document.getElementById('stats').innerHTML=
+    'Cash: $'+Math.max(0,Math.round(money))+'<br>'+
+    'Guests: '+guests.length+'<br>'+
+    'Attractions: '+buildings.length+'<br>'+
+    'Coaster track: '+coasterCount()+'<br>'+
+    'Park rating: '+Math.round(happiness*6);
+}
+
+document.querySelectorAll('button[data-tool]').forEach(function(button){
+  button.addEventListener('click',function(){
+    tool=button.dataset.tool;
+
+    document.querySelectorAll('button[data-tool]').forEach(function(b){
+      b.classList.remove('active');
+    });
+
+    button.classList.add('active');
+    log('Selected: '+button.textContent);
+  });
+});
+
+canvas.addEventListener('click',function(event){
+  const rect=canvas.getBoundingClientRect();
+  const x=Math.floor((event.clientX-rect.left)/TILE);
+  const y=Math.floor((event.clientY-rect.top)/TILE);
+
+  if(inside(x,y)){
+    buildAt(x,y);
+  }
+});
+
+init();
+
+let last=performance.now();
+
+function loop(now){
+  const dt=Math.min(0.1,(now-last)/1000);
+  last=now;
+
+  update(dt);
+  draw();
+  updateStats();
+
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
