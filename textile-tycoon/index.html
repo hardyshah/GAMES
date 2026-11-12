@@ -2,456 +2,784 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>TEXTILE TYCOON</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Textile Tycoon — Processing, Dyeing & Printing</title>
 <style>
-  *{box-sizing:border-box}
-  body{margin:0;font-family:system-ui,sans-serif;background:#12161c;color:#eef3f7}
-  #wrap{display:flex;height:100vh}
-  #side{width:320px;padding:14px;background:#1a222c;overflow-y:auto;border-right:2px solid #2c3947}
-  h1{margin:0 0 4px;font-size:22px;color:#ffd75e;letter-spacing:1px}
-  h2{margin:16px 0 6px;font-size:14px;color:#8fd0ff;text-transform:uppercase;letter-spacing:1px}
-  .stats{background:#0e141b;padding:10px;border-radius:8px;font-size:13px;line-height:1.55}
-  .btn{display:block;width:100%;margin:5px 0;padding:8px 10px;border:0;border-radius:6px;
-       background:#26374a;color:#eef3f7;cursor:pointer;font-size:13px;text-align:left}
-  .btn:hover{background:#33475d}
-  .btn.active{background:#ffd75e;color:#1a222c;font-weight:700}
-  .btn:disabled{opacity:.45;cursor:not-allowed}
-  .small{font-size:11px;color:#9fb3c4;margin:8px 0}
-  .order{background:#0e141b;border:1px solid #2c3947;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
-  .order b{color:#ffd75e}
-  #main{flex:1;position:relative}
-  canvas{display:block;width:100%;height:100%}
-  #panel{position:absolute;right:12px;top:12px;width:250px;background:#0e141be6;
-         border:1px solid #2c3947;border-radius:8px;padding:10px;font-size:13px;display:none}
-  #log{position:absolute;left:12px;bottom:12px;max-width:60%;background:#0e141bd9;
-       padding:8px 12px;border-radius:6px;font-size:13px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0e14;color:#e0e8f0;overflow:hidden;height:100vh}
+#app{display:flex;height:100vh}
+#sidebar{width:310px;background:#111820;border-right:2px solid #1e2a38;display:flex;flex-direction:column;z-index:10}
+#sidebar-top{padding:12px;background:#0d1218}
+#sidebar h1{font-size:20px;color:#f2b134;margin-bottom:2px;text-shadow:0 0 10px #f2b13444}
+#sidebar .tagline{font-size:11px;color:#5a7a94}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.stat-box{background:#0a1018;border:1px solid #1a2634;border-radius:6px;padding:5px 7px}
+.stat-label{font-size:9px;color:#5a7a94;text-transform:uppercase;letter-spacing:.5px}
+.stat-val{font-size:14px;font-weight:700}
+.money{color:#4ade80}.rating{color:#f2b134}
+#tabs{display:flex;background:#0d1218;border-bottom:1px solid #1e2a38}
+.tab{flex:1;padding:7px 4px;text-align:center;font-size:11px;color:#5a7a94;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.tab:hover{color:#a0b8cc}.tab.active{color:#f2b134;border-bottom-color:#f2b134}
+#tab-content{flex:1;overflow-y:auto;padding:8px}
+#tab-content::-webkit-scrollbar{width:5px}
+#tab-content::-webkit-scrollbar-thumb{background:#1e2a38;border-radius:3px}
+.cat{margin-bottom:10px}
+.cat-title{font-size:10px;color:#5a7a94;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;padding:0 4px}
+.item-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px;border:1px solid #1a2634;border-radius:6px;background:#0f1820;color:#c0d0e0;cursor:pointer;font-size:12px;margin-bottom:3px;transition:.15s;text-align:left}
+.item-btn:hover{background:#162030;border-color:#2a3e54}
+.item-btn.active{background:#1a2a18;border-color:#4ade80;color:#4ade80}
+.item-btn.locked{opacity:.4;cursor:not-allowed}
+.item-btn .ic{font-size:18px;width:26px;text-align:center}
+.item-btn .inf{flex:1}
+.item-btn .nm{font-weight:600;font-size:11px}
+.item-btn .det{font-size:10px;color:#5a7a94}
+.order-card{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:8px;margin-bottom:5px;font-size:12px}
+.order-card b{color:#f2b134}
+.order-card .fulfill-btn{padding:4px 10px;border:1px solid #2a3e54;border-radius:4px;background:#162030;color:#e0e8f0;cursor:pointer;font-size:11px;margin-top:4px}
+.order-card .fulfill-btn:hover{background:#1e3040}
+.order-card .fulfill-btn:disabled{opacity:.4;cursor:not-allowed}
+.r-item{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:7px;margin-bottom:5px}
+.r-item.done{border-color:#4ade80}
+.r-item .rn{font-size:12px;font-weight:600}.r-item .rd{font-size:10px;color:#5a7a94;margin:2px 0}
+.r-item .rc{font-size:11px;color:#f2b134}
+.r-btn{padding:4px 10px;border:1px solid #2a3e54;border-radius:4px;background:#162030;color:#e0e8f0;cursor:pointer;font-size:11px;margin-top:3px}
+.r-btn:hover{background:#1e3040}.r-btn:disabled{opacity:.4;cursor:not-allowed}
+.info-panel{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:8px;margin-bottom:5px;font-size:12px;line-height:1.7}
+.info-panel b{color:#f2b134}
+.bar-row{display:flex;align-items:center;gap:4px;font-size:10px;margin:2px 0}
+.bar-row span:first-child{width:70px;color:#5a7a94}
+.bar-bg{flex:1;height:6px;background:#0a1018;border-radius:3px}.bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.bar-row .bv{width:30px;text-align:right}
+#main{flex:1;position:relative;background:#1a2218}
+canvas{display:block}
+#hud{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:5;flex-wrap:wrap}
+.hud-btn{padding:5px 12px;background:#111820dd;border:1px solid #1e2a38;border-radius:6px;color:#c0d0e0;cursor:pointer;font-size:12px;backdrop-filter:blur(4px)}
+.hud-btn:hover{background:#1a2838dd}.hud-btn.active{border-color:#f2b134;color:#f2b134}
+#speed-display{position:absolute;top:10px;right:10px;padding:5px 12px;background:#111820dd;border:1px solid #1e2a38;border-radius:6px;color:#f2b134;font-size:12px;backdrop-filter:blur(4px);z-index:5}
+#msg{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);padding:8px 20px;background:#111820ee;border:1px solid #1e2a38;border-radius:8px;color:#e0e8f0;font-size:13px;backdrop-filter:blur(4px);z-index:5;pointer-events:none;opacity:0;transition:opacity .3s}
+#msg.show{opacity:1}
+#tooltip{position:absolute;display:none;background:#0d1218ee;border:1px solid #1e2a38;border-radius:6px;padding:8px 12px;font-size:11px;color:#e0e8f0;pointer-events:none;z-index:20;backdrop-filter:blur(4px);max-width:240px;line-height:1.5}
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="side">
-    <h1>TEXTILE TYCOON</h1>
-    <div class="small">Build a textile empire: spin yarn, weave fabric, dye it, sew garments, and fulfill orders.</div>
-    <div class="stats" id="stats"></div>
-
-    <h2>Build</h2>
-    <button class="btn active" data-tool="select">🖐 Select Machine</button>
-    <button class="btn" data-tool="spinner">🧵 Spinning Machine — $1,200</button>
-    <button class="btn" data-tool="loom">🕸️ Weaving Loom — $1,800</button>
-    <button class="btn" data-tool="dye">🎨 Dye Vat — $1,500</button>
-    <button class="btn" data-tool="sewer">🪡 Sewing Station — $2,500</button>
-    <button class="btn" data-tool="demolish">💥 Demolish — refund 25%</button>
-
-    <h2>Operations</h2>
-    <button class="btn" id="buyCotton">🧺 Buy 10 Cotton Bales</button>
-    <button class="btn" id="hire">👷 Hire Worker — $800</button>
-    <button class="btn" id="fire">👋 Fire Worker — refund $400</button>
-    <button class="btn" id="sellGarments">📦 Sell 10 Garments</button>
-    <button class="btn" id="pause">⏸ Pause / Resume</button>
-    <button class="btn" id="save">💾 Save Game</button>
-    <button class="btn" id="load">📂 Load Game</button>
-    <button class="btn" id="reset">🔄 New Game</button>
-
-    <h2>Orders</h2>
-    <div id="orders"></div>
+<div id="app">
+<div id="sidebar">
+  <div id="sidebar-top">
+    <h1>🏭 Textile Tycoon</h1>
+    <div class="tagline">Processing · Dyeing · Printing</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-label">Cash</div><div class="stat-val money" id="s-money">$50,000</div></div>
+      <div class="stat-box"><div class="stat-label">Workers</div><div class="stat-val" id="s-workers">3</div></div>
+      <div class="stat-box"><div class="stat-label">Reputation</div><div class="stat-val rating" id="s-rep">50</div></div>
+      <div class="stat-box"><div class="stat-label">Month</div><div class="stat-val" id="s-month">Jan Y1</div></div>
+    </div>
   </div>
-
-  <div id="main">
-    <canvas id="c"></canvas>
-    <div id="panel"></div>
-    <div id="log">Welcome to TEXTILE TYCOON. Build a Spinning Machine, buy cotton, and hire your first worker.</div>
+  <div id="tabs">
+    <div class="tab active" data-tab="build">Build</div>
+    <div class="tab" data-tab="orders">Orders</div>
+    <div class="tab" data-tab="research">Research</div>
+    <div class="tab" data-tab="finance">Finance</div>
   </div>
+  <div id="tab-content"></div>
 </div>
-
+<div id="main">
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div class="hud-btn" id="btn-pause">⏸ Pause</div>
+    <div class="hud-btn" id="btn-speed">▶▶ Fast</div>
+    <div class="hud-btn" id="btn-demolish">💥 Demolish</div>
+    <div class="hud-btn" id="btn-buy-greige">🧺 Buy Greige Fabric ($500)</div>
+    <div class="hud-btn" id="btn-hire">👷 Hire Worker ($1,200)</div>
+  </div>
+  <div id="speed-display">▶ Normal</div>
+  <div id="msg"></div>
+  <div id="tooltip"></div>
+</div>
+</div>
 <script>
-const MW=18, MH=11;
-const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
-let cellW, cellH, tool='select', selected=null;
+// =====================================================
+// TEXTILE TYCOON — Processing, Dyeing & Printing
+// Machines based on real textile factory layouts
+// =====================================================
+const C=document.getElementById('game'),ctx=C.getContext('2d');
+const COLS=52,ROWS=52,ISO_W=44,ISO_H=22,HW=ISO_W/2,HH=ISO_H/2;
 
+// ---- GAME STATE ----
+let G={
+  grid:[],buildings:[],money:50000,workers:3,month:0,day:0,tick:0,speed:1,
+  reputation:50,totalRevenue:0,research:{},tool:null,demolish:false,
+  cameraX:0,cameraY:0,zoom:0.8,dragStart:null,dragCam:null,hover:null,
+  msgTimer:0,buildId:0,
+  // Inventory
+  inv:{greige:30,scoured:0,bleached:0,mercerized:0,dyed:0,printed:0,finished:0,
+       dye_paste:0,print_paste:0,screens:0},
+  orders:[],nextOrderId:1,
+  // Market prices fluctuate
+  greige_price:50,finished_price:0,
+  loan:0,maxLoan:80000,
+  weather:'normal',
+};
+
+const TERRAIN={FLOOR:0,PATH:1,WALL:2,WATER:3};
+
+// ---- DEPARTMENT ZONES (cosmetic) ----
+const ZONES=[
+  {name:'Preparatory',color:'#2a3a2e',x:0,y:0,w:18,h:16},
+  {name:'Dyeing Hall',color:'#1e2e3a',x:0,y:16,w:18,h:18},
+  {name:'Colour Kitchen',color:'#2e2a3a',x:18,y:16,w:16,h:18},
+  {name:'Printing Dept',color:'#3a2e2a',x:18,y:0,w:18,h:16},
+  {name:'Screen Engraving',color:'#2a2e3a',x:36,y:0,w:16,h:16},
+  {name:'Finishing',color:'#2e3a2e',x:36,y:16,w:16,h:18},
+  {name:'Warehouse',color:'#3a3a2e',x:0,y:34,w:52,h:18},
+];
+
+// ---- MACHINE DEFINITIONS (based on real textile factory equipment) ----
 const MACH={
-  spinner:{name:'Spinning Machine',cost:1200,input:'cotton',output:'yarn',time:6,color:'#c9a86a',icon:'🧵'},
-  loom:{name:'Weaving Loom',cost:1800,input:'yarn',output:'fabric',time:8,color:'#7fa8c9',icon:'🕸️'},
-  dye:{name:'Dye Vat',cost:1500,input:'fabric',output:'dyedFabric',time:7,color:'#9b6cc9',icon:'🎨'},
-  sewer:{name:'Sewing Station',cost:2500,input:'dyedFabric',output:'garment',time:10,color:'#e08a9b',icon:'🪡'}
+  // === PREPARATORY ===
+  singeing:{name:'Singeing Machine',cat:'prep',cost:3000,upkeep:25,icon:'🔥',color:'#c05020',w:3,h:1,
+    input:'greige',output:'scoured',time:8,desc:'Burns off protruding fibres for smooth fabric surface',unlocked:true},
+  desizing:{name:'Desizing & Scouring',cat:'prep',cost:4000,upkeep:35,icon:'🧪',color:'#4a8a6a',w:3,h:2,
+    input:'greige',output:'scoured',time:10,desc:'Removes sizing agents and natural impurities from greige fabric',unlocked:true},
+  bleaching:{name:'Bleaching Range',cat:'prep',cost:5500,upkeep:40,icon:'⚪',color:'#a0b0c0',w:4,h:2,
+    input:'scoured',output:'bleached',time:12,desc:'Continuous bleaching with H₂O₂ for uniform whiteness',research:'bleach_range'},
+  mercerizer:{name:'Mercerizing Machine',cat:'prep',cost:8000,upkeep:55,icon:'✨',color:'#7090b0',w:4,h:2,
+    input:'bleached',output:'mercerized',time:14,desc:'NaOH treatment for lustre, strength and dye uptake. Premium fabric path.',research:'mercerizer'},
+
+  // === DYEING ===
+  dispensing:{name:'Dispensing Station',cat:'dye',cost:3500,upkeep:20,icon:'⚖️',color:'#3f7d3f',w:2,h:2,
+    input:null,output:'dye_paste',time:6,desc:'Green-frame weighing table with moving gantry crane — weighs and dispenses dye chemicals',unlocked:true,generator:true},
+  jet_dye:{name:'HT Jet Dyeing Machine',cat:'dye',cost:12000,upkeep:80,icon:'🌀',color:'#2162ae',w:3,h:3,
+    input:'bleached',output:'dyed',time:16,needs:'dye_paste',desc:'High-temperature jet dyeing vessel with dosing cabinet — dyes fabric in rope form at 130°C',unlocked:true},
+  jigger:{name:'Jigger Dyeing',cat:'dye',cost:6000,upkeep:45,icon:'🔄',color:'#5a7aaa',w:2,h:2,
+    input:'bleached',output:'dyed',time:14,needs:'dye_paste',desc:'Open-width dyeing on a jigger for flat fabrics',research:'jigger'},
+  padder:{name:'Pad-Dry-Cure',cat:'dye',cost:15000,upkeep:90,icon:'📐',color:'#4a6a8a',w:4,h:2,
+    input:'bleached',output:'dyed',time:10,needs:'dye_paste',desc:'Continuous padding, drying and curing line — high throughput',research:'pad_dry'},
+
+  // === COLOUR KITCHEN ===
+  colour_mixer:{name:'Colour Kitchen Mixer',cat:'kitchen',cost:5000,upkeep:30,icon:'🎨',color:'#9b6cc9',w:2,h:2,
+    input:null,output:'print_paste',time:8,desc:'SS tanks with stirrers — mixes print paste from pigments and binders',unlocked:true,generator:true},
+  auto_dispenser:{name:'Auto Colour Dispenser',cat:'kitchen',cost:12000,upkeep:50,icon:'🤖',color:'#7a5ab0',w:3,h:2,
+    input:null,output:'print_paste',time:4,desc:'Computer-controlled dispensing with stored recipes. Double output speed.',research:'auto_dispenser',generator:true},
+
+  // === PRINTING ===
+  rotary_baby:{name:'Baby Rotary (Sampling)',cat:'print',cost:8000,upkeep:50,icon:'🖨️',color:'#b23a8a',w:4,h:2,
+    input:'bleached',output:'printed',time:14,needs:'print_paste',needs_screen:true,desc:'4-head sampling rotary line for design proofs and short runs',unlocked:true},
+  rotary_prod:{name:'Rotary Print Line',cat:'print',cost:20000,upkeep:100,icon:'🖨️',color:'#d94070',w:5,h:3,
+    input:'bleached',output:'printed',time:10,needs:'print_paste',needs_screen:true,desc:'8-head production rotary with dryer — blanket, spinning screens, squeegees, hot-air dryer and plaiter',research:'rotary_prod'},
+  flatbed:{name:'Flatbed Screen Printer',cat:'print',cost:25000,upkeep:110,icon:'📋',color:'#1f5fc4',w:5,h:3,
+    input:'bleached',output:'printed',time:12,needs:'print_paste',needs_screen:true,desc:'Stop-and-go flatbed with hydraulic screen lift, squeegee carriages, blanket wash and panelled dryer',research:'flatbed'},
+  digital:{name:'Digital Inkjet Printer',cat:'print',cost:35000,upkeep:80,icon:'💻',color:'#2d3b4e',w:3,h:2,
+    input:'bleached',output:'printed',time:6,desc:'High-speed digital printer — no screens needed, unlimited colours, low paste usage',research:'digital'},
+
+  // === SCREEN ENGRAVING ===
+  coater:{name:'Screen Coating Machine',cat:'engrave',cost:4000,upkeep:20,icon:'🖌️',color:'#3c78b8',w:2,h:1,
+    input:null,output:'screens',time:10,desc:'Auto coating of rotary screens with photosensitive emulsion',unlocked:true,generator:true},
+  laser_engraver:{name:'Laser Engraver',cat:'engrave',cost:15000,upkeep:60,icon:'⚡',color:'#d23a44',w:3,h:1,
+    input:null,output:'screens',time:6,desc:'Laser exposure of coated screens from digital design files — precision and speed',research:'laser_eng',generator:true},
+  developer:{name:'Screen Developer',cat:'engrave',cost:3000,upkeep:15,icon:'🚿',color:'#5090c0',w:2,h:1,
+    input:null,output:'screens',time:8,desc:'Develops exposed screens by washing away unexposed emulsion',unlocked:true,generator:true},
+
+  // === FINISHING ===
+  stenter:{name:'Stenter Frame',cat:'finish',cost:18000,upkeep:85,icon:'📏',color:'#c9ced4',w:5,h:2,
+    input:'dyed',output:'finished',time:12,desc:'6-chamber stenter with pin/clip chains — heat-sets, dries and width-controls fabric',research:'stenter'},
+  stenter_print:{name:'Stenter (Print Finish)',cat:'finish',cost:18000,upkeep:85,icon:'📏',color:'#aab4be',w:5,h:2,
+    input:'printed',output:'finished',time:12,desc:'Finishing stenter for printed goods — curing and setting the print',research:'stenter'},
+  calender:{name:'Calender',cat:'finish',cost:8000,upkeep:40,icon:'🔧',color:'#8a9aaa',w:2,h:2,
+    input:'dyed',output:'finished',time:10,desc:'Heavy roller machine for smooth or glazed finish',unlocked:true},
+  sanforizer:{name:'Sanforizer',cat:'finish',cost:12000,upkeep:55,icon:'📐',color:'#6a8a7a',w:4,h:2,
+    input:'finished',output:'finished',time:8,desc:'Pre-shrinking treatment for dimensional stability. Upgrades existing finished fabric.',research:'sanforizer',upgrader:true},
+
+  // === INFRASTRUCTURE ===
+  boiler:{name:'Steam Boiler',cat:'infra',cost:10000,upkeep:60,icon:'♨️',color:'#8a6050',w:3,h:3,
+    desc:'Supplies steam to dyeing, printing and finishing machines. Boosts all machine speed by 15%.',unlocked:true,utility:true},
+  etp:{name:'Effluent Treatment Plant',cat:'infra',cost:15000,upkeep:70,icon:'♻️',color:'#3a8a5a',w:4,h:3,
+    desc:'Treats wastewater. Required for reputation above 70 and unlocks export orders.',research:'etp',utility:true},
+  lab:{name:'Quality Lab',cat:'infra',cost:6000,upkeep:25,icon:'🔬',color:'#6a7a8a',w:2,h:2,
+    desc:'Tests colour fastness, shrinkage, GSM. Reduces rejection rate and boosts reputation.',unlocked:true,utility:true},
+  trolley_store:{name:'Trolley Storage Bay',cat:'infra',cost:2000,upkeep:5,icon:'🛒',color:'#8b6914',w:3,h:2,
+    desc:'A-frame batching trolleys for WIP buffer between departments. +10% throughput.',unlocked:true,utility:true},
+
+  // === PATHS ===
+  path:{name:'Factory Aisle',cat:'path',cost:20,upkeep:0,icon:'🛤️',w:1,h:1,color:'#706858',unlocked:true,isPath:true},
 };
 
-const NAMES={
-  cotton:'Cotton Bales', yarn:'Yarn', fabric:'Fabric',
-  dyedFabric:'Dyed Fabric', garment:'Garments'
+// ---- RESEARCH TREE ----
+const RESEARCH=[
+  {id:'bleach_range',name:'Continuous Bleaching',desc:'Unlock bleaching range for uniform whiteness',cost:3000,icon:'⚪'},
+  {id:'mercerizer',name:'Mercerizing',desc:'Unlock mercerizer for premium lustre fabric',cost:6000,icon:'✨',requires:'bleach_range'},
+  {id:'jigger',name:'Jigger Dyeing',desc:'Unlock open-width jigger dyeing',cost:3000,icon:'🔄'},
+  {id:'pad_dry',name:'Pad-Dry-Cure',desc:'Unlock continuous padding line — fastest dyeing',cost:8000,icon:'📐',requires:'jigger'},
+  {id:'auto_dispenser',name:'Auto Dispensing',desc:'Computer-controlled colour dispensing — double speed',cost:7000,icon:'🤖'},
+  {id:'rotary_prod',name:'Production Rotary',desc:'Unlock 8-head production rotary print line',cost:10000,icon:'🖨️'},
+  {id:'flatbed',name:'Flatbed Printing',desc:'Unlock flatbed screen printer with dryer',cost:15000,icon:'📋',requires:'rotary_prod'},
+  {id:'digital',name:'Digital Printing',desc:'Unlock inkjet digital printer — no screens needed',cost:25000,icon:'💻',requires:'flatbed'},
+  {id:'laser_eng',name:'Laser Engraving',desc:'Precision laser screen exposure from digital files',cost:8000,icon:'⚡'},
+  {id:'stenter',name:'Stenter Frame',desc:'Unlock finishing stenter for heat-setting and width control',cost:10000,icon:'📏'},
+  {id:'sanforizer',name:'Sanforizing',desc:'Pre-shrinking for export-grade dimensional stability',cost:8000,icon:'📐',requires:'stenter'},
+  {id:'etp',name:'Effluent Treatment',desc:'Unlock ETP — required for reputation >70 and export orders',cost:12000,icon:'♻️'},
+  {id:'marketing1',name:'Domestic Marketing',desc:'+25% order frequency',cost:5000,icon:'📰'},
+  {id:'marketing2',name:'Export Marketing',desc:'Unlock export orders (higher value)',cost:12000,icon:'🌍',requires:'marketing1'},
+];
+
+// ---- MATERIAL NAMES ----
+const MAT_NAMES={
+  greige:'Greige Fabric',scoured:'Scoured Fabric',bleached:'Bleached Fabric',
+  mercerized:'Mercerized Fabric',dyed:'Dyed Fabric',printed:'Printed Fabric',
+  finished:'Finished Fabric',dye_paste:'Dye Paste',print_paste:'Print Paste',screens:'Screens'
 };
 
-function newState(){
-  return {
-    grid:Array.from({length:MH},()=>Array(MW).fill(null)),
-    machines:[], workers:1, money:20000, day:1, time:0, tick:0,
-    inv:{cotton:20,yarn:0,fabric:0,dyedFabric:0,garment:0},
-    orders:[], nextOrder:1, reputation:50,
-    cottonPrice:40, garmentPrice:24, paused:false, nextId:1, totalRevenue:0
-  };
+// ---- INIT ----
+function initGrid(){
+  G.grid=[];
+  for(let r=0;r<ROWS;r++){G.grid[r]=[];for(let c=0;c<COLS;c++) G.grid[r][c]={terrain:TERRAIN.FLOOR,building:null};}
+  // Entrance aisle
+  for(let r=48;r<ROWS;r++){G.grid[r][26].terrain=TERRAIN.PATH;G.grid[r][25].terrain=TERRAIN.PATH;}
+  // Main horizontal aisle
+  for(let c=2;c<50;c++){G.grid[34][c].terrain=TERRAIN.PATH;G.grid[35][c].terrain=TERRAIN.PATH;}
+  // Vertical aisles
+  for(let r=2;r<48;r++){G.grid[r][17].terrain=TERRAIN.PATH;G.grid[r][35].terrain=TERRAIN.PATH;}
 }
 
-function log(t){ document.getElementById('log').textContent=t; }
+// ---- ISO HELPERS ----
+function toIso(c,r){return{x:(c-r)*HW,y:(c+r)*HH};}
+function toScreen(c,r){let i=toIso(c,r);return{x:i.x*G.zoom+G.cameraX+C.width/2,y:i.y*G.zoom+G.cameraY+C.height/2};}
+function fromScreen(sx,sy){let x=(sx-C.width/2-G.cameraX)/G.zoom,y=(sy-C.height/2-G.cameraY)/G.zoom;return{col:Math.floor((x/HW+y/HH)/2),row:Math.floor((y/HH-x/HW)/2)};}
+function resize(){C.width=C.parentElement.clientWidth;C.height=C.parentElement.clientHeight;}
+window.addEventListener('resize',resize);
 
-function saveGame(){
-  localStorage.setItem('textileTycoonSave',JSON.stringify(state));
-  log('Game saved.');
-}
-function loadGame(){
-  const s=localStorage.getItem('textileTycoonSave');
-  if(!s){ log('No saved game found.'); return; }
-  state=JSON.parse(s); selected=null;
-  document.getElementById('panel').style.display='none';
-  log('Game loaded.');
-}
-function newGame(){
-  state=newState(); selected=null;
-  document.getElementById('panel').style.display='none';
-  log('New game started. Build a Spinning Machine to begin.');
-}
+function darken(hex,a){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return'#'+((1<<24)+(Math.floor(r*(1-a))<<16)+(Math.floor(g*(1-a))<<8)+Math.floor(b*(1-a))).toString(16).slice(1);}
 
-/* ---------- Building ---------- */
-
-function placeMachine(type,x,y){
-  const def=MACH[type];
-  if(state.money<def.cost){ log('Not enough money.'); return; }
-  if(state.grid[y][x]){ log('Tile occupied.'); return; }
-  state.money-=def.cost;
-  const m={id:state.nextId++,type,x,y,level:1,progress:0,broken:false,input:0,output:0};
-  state.machines.push(m);
-  state.grid[y][x]=m.id;
-  log(def.name+' built for $'+def.cost+'.');
-}
-
-function demolish(x,y){
-  const id=state.grid[y][x];
-  if(!id) return;
-  const m=state.machines.find(v=>v.id===id);
-  if(!m) return;
-  state.money+=Math.floor(MACH[m.type].cost*0.25);
-  state.machines=state.machines.filter(v=>v.id!==id);
-  state.grid[y][x]=null;
-  if(selected===m) selected=null;
-  log('Machine demolished. 25% refund issued.');
-}
-
-/* ---------- Simulation ---------- */
-
-function assignWorkers(){
-  let available=state.workers;
-  for(const m of state.machines){
-    m.worker=available>0;
-    if(m.worker) available--;
+function drawTile(col,row,color,h){
+  let p=toScreen(col,row),ht=(h||0)*G.zoom,w=HW*G.zoom,hh=HH*G.zoom;
+  ctx.beginPath();ctx.moveTo(p.x,p.y-ht);ctx.lineTo(p.x+w,p.y+hh-ht);ctx.lineTo(p.x,p.y+2*hh-ht);ctx.lineTo(p.x-w,p.y+hh-ht);ctx.closePath();
+  ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=0.5;ctx.stroke();
+  if(ht>0){
+    ctx.beginPath();ctx.moveTo(p.x-w,p.y+hh-ht);ctx.lineTo(p.x-w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x,p.y+2*hh-ht);ctx.closePath();ctx.fillStyle=darken(color,.25);ctx.fill();
+    ctx.beginPath();ctx.moveTo(p.x,p.y+2*hh-ht);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x+w,p.y+hh-ht);ctx.closePath();ctx.fillStyle=darken(color,.15);ctx.fill();
   }
 }
 
+function getFloorColor(c,r){
+  // Zone-based coloring
+  for(let z of ZONES){if(c>=z.x&&c<z.x+z.w&&r>=z.y&&r<z.y+z.h)return z.color;}
+  let v=((c*7+r*13)%4)*2;return`rgb(${38+v},${48+v},${36+v})`;
+}
+
+// ---- DRAWING ----
+function drawBuilding(b){
+  let def=MACH[b.type];if(!def)return;
+  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
+    let ht=def.utility?10:def.isPath?1:7;
+    drawTile(b.col+dc,b.row+dr,def.color,ht);
+  }
+  let cx=b.col+def.w/2,cy=b.row+def.h/2,p=toScreen(cx,cy);
+  let ht=def.utility?10:def.isPath?1:7;
+  let sz=Math.max(12,18*G.zoom);
+  ctx.font=sz+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(def.icon,p.x,p.y-ht*G.zoom-2);
+  // Progress bar
+  if(b.progress>0&&def.time&&!def.utility&&!def.isPath){
+    let bw=def.w*HW*G.zoom*1.2,bh=4*G.zoom;
+    let bx=p.x-bw/2,by=p.y-ht*G.zoom-sz/2-6*G.zoom;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=b.hasWorker?'#4ade80':'#f2b134';
+    ctx.fillRect(bx,by,bw*(b.progress/def.time),bh);
+  }
+  // Worker indicator
+  if(!def.isPath&&!def.utility&&G.zoom>0.5){
+    ctx.font='bold '+Math.max(7,9*G.zoom)+'px sans-serif';
+    ctx.fillStyle=b.hasWorker?'#4ade80':'#ff6b6b';
+    ctx.fillText(b.hasWorker?'👷':'⚠️ NO WORKER',p.x,p.y+HH*G.zoom*def.h*0.3);
+  }
+}
+
+function drawHover(){
+  if(!G.hover)return;let{col,row}=G.hover;if(col<0||row<0||col>=COLS||row>=ROWS)return;
+  if(G.tool){let def=MACH[G.tool];if(def){let can=canPlace(G.tool,col,row);
+    for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
+      let p=toScreen(col+dc,row+dr),w=HW*G.zoom,hh=HH*G.zoom;
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x-w,p.y+hh);ctx.closePath();
+      ctx.fillStyle=can?'rgba(74,222,128,0.3)':'rgba(255,80,80,0.3)';ctx.fill();ctx.strokeStyle=can?'#4ade80':'#ff5050';ctx.lineWidth=1.5;ctx.stroke();
+    }
+  }}else if(G.demolish){
+    let p=toScreen(col,row),w=HW*G.zoom,hh=HH*G.zoom;
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x-w,p.y+hh);ctx.closePath();
+    ctx.fillStyle='rgba(255,80,80,0.3)';ctx.fill();
+  }
+}
+
+function draw(){
+  ctx.fillStyle='#1a2218';ctx.fillRect(0,0,C.width,C.height);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    let t=G.grid[r][c];
+    if(t.terrain===TERRAIN.PATH) drawTile(c,r,'#706858',1);
+    else drawTile(c,r,getFloorColor(c,r),0);
+  }
+  // Zone labels
+  if(G.zoom>0.4){for(let z of ZONES){
+    let p=toScreen(z.x+z.w/2,z.y+1);
+    ctx.font='bold '+Math.max(8,11*G.zoom)+'px sans-serif';ctx.textAlign='center';
+    ctx.fillStyle='rgba(242,177,52,0.5)';ctx.fillText(z.name,p.x,p.y);
+  }}
+  // Buildings sorted by depth
+  let sorted=[...G.buildings].sort((a,b)=>(a.col+a.row)-(b.col+b.row));
+  sorted.forEach(b=>drawBuilding(b));
+  // Entrance
+  let ep=toScreen(25.5,49);
+  drawTile(25,49,'#f2b134',5);drawTile(26,49,'#f2b134',5);
+  ctx.font='bold '+Math.max(9,12*G.zoom)+'px sans-serif';ctx.textAlign='center';ctx.fillStyle='#1a1a2e';
+  ctx.fillText('GATE',ep.x,ep.y-5*G.zoom);
+  drawHover();
+}
+
+// ---- BUILDING ----
+function isPath(c,r){return c>=0&&r>=0&&c<COLS&&r<ROWS&&G.grid[r][c].terrain===TERRAIN.PATH;}
+
+function adjacentPath(col,row,w,h){
+  for(let dc=0;dc<w;dc++){if(row>0&&isPath(col+dc,row-1))return true;if(row+h<ROWS&&isPath(col+dc,row+h))return true;}
+  for(let dr=0;dr<h;dr++){if(col>0&&isPath(col-1,row+dr))return true;if(col+w<COLS&&isPath(col+w,row+dr))return true;}
+  return false;
+}
+
+function canPlace(type,col,row){
+  let def=MACH[type];if(!def)return false;
+  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
+    let c2=col+dc,r2=row+dr;if(c2<0||r2<0||c2>=COLS||r2>=ROWS)return false;
+    let t=G.grid[r2][c2];
+    if(def.isPath){if(t.building)return false;}
+    else{if(t.terrain===TERRAIN.PATH||t.building)return false;}
+  }
+  if(!def.isPath)if(!adjacentPath(col,row,def.w,def.h))return false;
+  return true;
+}
+
+function placeBuild(type,col,row){
+  let def=MACH[type];if(!def)return;
+  if(G.money<def.cost){showMsg('Not enough money!');return;}
+  if(!canPlace(type,col,row)){showMsg('Cannot build there — needs adjacent aisle');return;}
+  G.money-=def.cost;
+  let b={type,col,row,id:G.buildId++,progress:0,income:0,hasWorker:false,level:1,produced:0,broken:false};
+  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
+    let t=G.grid[row+dr][col+dc];
+    if(def.isPath){t.terrain=TERRAIN.PATH;}else{t.building=b.id;}
+  }
+  if(!def.isPath)G.buildings.push(b);
+  showMsg(def.name+' built for $'+def.cost.toLocaleString());
+}
+
+function demolishAt(col,row){
+  if(col<0||row<0||col>=COLS||row>=ROWS)return;
+  let t=G.grid[row][col];
+  if(t.building){
+    let b=G.buildings.find(x=>x.id===t.building);if(!b)return;
+    let def=MACH[b.type],refund=Math.floor(def.cost*0.25);G.money+=refund;
+    for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++)G.grid[b.row+dr][b.col+dc].building=null;
+    G.buildings=G.buildings.filter(x=>x.id!==b.id);
+    showMsg(def.name+' demolished. $'+refund+' refunded.');
+  }else if(t.terrain===TERRAIN.PATH){t.terrain=TERRAIN.FLOOR;G.money+=5;}
+}
+
+// ---- SIMULATION ----
+function assignWorkers(){
+  let avail=G.workers;
+  // Prioritize by: utility first, then production machines
+  let sorted=[...G.buildings].sort((a,b)=>{
+    let da=MACH[a.type],db=MACH[b.type];
+    let pa=da.utility?0:da.generator?1:2,pb=db.utility?0:db.generator?1:2;
+    return pa-pb;
+  });
+  for(let b of G.buildings)b.hasWorker=false;
+  for(let b of sorted){
+    let def=MACH[b.type];if(def.isPath)continue;
+    if(avail>0){b.hasWorker=true;avail--;}
+  }
+}
+
+function hasUtility(type){return G.buildings.some(b=>b.type===type&&b.hasWorker);}
+
 function updateMachines(dt){
   assignWorkers();
-  for(const m of state.machines){
-    const def=MACH[m.type];
-    if(m.broken||!m.worker) continue;
-    if(m.input<=0){
-      if(state.inv[def.input]>0){
-        state.inv[def.input]--;
-        m.input++;
-      } else continue;
+  let boilerBonus=hasUtility('boiler')?0.15:0;
+  let labBonus=hasUtility('lab');
+  let trolleyBonus=hasUtility('trolley_store')?0.10:0;
+
+  for(let b of G.buildings){
+    let def=MACH[b.type];
+    if(!def||def.isPath||def.utility||b.broken||!b.hasWorker)continue;
+
+    // Check input availability
+    if(def.generator){
+      // Generators (dispensing, colour mixer, coater, etc) produce from nothing
+    }else{
+      if(!def.input||G.inv[def.input]<=0)continue;
+      if(def.needs&&G.inv[def.needs]<=0)continue;
+      if(def.needs_screen&&G.inv.screens<=0)continue;
     }
-    const speed=(1+0.25*(m.level-1));
-    m.progress+=dt*speed;
-    if(m.progress>=def.time){
-      m.progress=0;
-      m.input--;
-      state.inv[def.output]++;
+
+    let speed=(1+boilerBonus+trolleyBonus)*(1+0.2*(b.level-1));
+    b.progress+=dt*speed;
+
+    if(b.progress>=def.time){
+      b.progress=0;
+      // Consume inputs
+      if(!def.generator){
+        if(def.input)G.inv[def.input]--;
+        if(def.needs)G.inv[def.needs]--;
+        if(def.needs_screen)G.inv.screens=Math.max(0,G.inv.screens-0.1); // screens last ~10 uses
+      }
+      // Produce output
+      if(def.output){
+        G.inv[def.output]++;
+        b.produced++;
+      }
     }
   }
 }
 
 function updateEconomy(dt){
-  state.time+=dt;
-  if(state.time<30) return;
-  state.time=0;
-  state.day++;
+  G.day+=dt*0.05;
+  if(G.day<30)return;
+  G.day=0;G.month++;
 
-  // wages and rent
-  const wages=state.workers*120;
-  const rent=200+state.machines.length*40;
-  state.money-=wages+rent;
+  // Upkeep
+  let upkeep=0;
+  for(let b of G.buildings){let d=MACH[b.type];if(d)upkeep+=d.upkeep;}
+  // Wages
+  let wages=G.workers*200;
+  // Loan interest
+  let interest=Math.floor(G.loan*0.04/12);
+  let total=upkeep+wages+interest;
+  G.money-=total;
 
-  // market drift
-  state.cottonPrice=Math.max(25,Math.min(70,state.cottonPrice+(Math.random()*8-4)));
-  state.garmentPrice=Math.max(15,Math.min(40,state.garmentPrice+(Math.random()*5-2.5)));
+  // Greige price fluctuation
+  G.greige_price=Math.max(30,Math.min(80,G.greige_price+(Math.random()*10-5)));
 
-  // random breakdowns
-  for(const m of state.machines){
-    if(!m.broken&&Math.random()<0.03){
-      m.broken=true;
-      log(MACH[m.type].name+' broke down! Repair it from the machine panel.');
+  // Random breakdowns
+  for(let b of G.buildings){
+    let def=MACH[b.type];
+    if(def&&!def.utility&&!def.isPath&&!b.broken&&Math.random()<0.02){
+      b.broken=true;showMsg(def.name+' broke down! Click it to repair.');
     }
   }
 
-  // new orders
-  if(state.orders.length<5&&Math.random()<0.55){
-    const qty=5+Math.floor(Math.random()*16);
-    const reward=Math.round(qty*state.garmentPrice*1.35+Math.random()*200);
-    state.orders.push({
-      id:state.nextOrder++, qty, reward,
-      deadline:state.day+3+Math.floor(Math.random()*4)
-    });
-    log('New order received: '+qty+' garments for $'+reward+'.');
+  // New orders
+  if(G.orders.length<6&&Math.random()<(G.research.marketing1?0.7:0.5)){
+    generateOrder();
   }
 
-  // expire orders
-  state.orders=state.orders.filter(o=>{
-    if(o.deadline<state.day){
-      state.reputation=Math.max(0,state.reputation-8);
-      log('Order #'+o.id+' expired. Reputation fell.');
-      return false;
-    }
+  // Expire orders
+  G.orders=G.orders.filter(o=>{
+    if(o.deadline<G.month){G.reputation=Math.max(0,G.reputation-5);showMsg('Order #'+o.id+' expired!');return false;}
     return true;
   });
 
-  if(state.money<0) log('Warning: negative cash. Sell garments or fulfill orders.');
+  // Reputation
+  let hasEtp=hasUtility('etp');
+  let hasLab=hasUtility('lab');
+  if(hasLab)G.reputation=Math.min(100,G.reputation+1);
+  if(!hasEtp&&G.reputation>70)G.reputation=70;
+
+  if(G.money<0)showMsg('⚠️ Negative cash! Fulfill orders or sell fabric.');
 }
 
-/* ---------- Actions ---------- */
-
-function buyCotton(){
-  const cost=10*state.cottonPrice;
-  if(state.money<cost){ log('Not enough money for cotton.'); return; }
-  state.money-=cost;
-  state.inv.cotton+=10;
-  log('Bought 10 cotton bales for $'+cost+'.');
+function generateOrder(){
+  let types=['dyed','printed','finished'];
+  let type=types[Math.floor(Math.random()*types.length)];
+  let isExport=G.research.marketing2&&Math.random()<0.3;
+  if(isExport&&!hasUtility('etp'))isExport=false;
+  let qty=5+Math.floor(Math.random()*20);
+  let basePrice=type==='finished'?120:type==='printed'?90:60;
+  if(isExport)basePrice*=1.5;
+  let reward=Math.round(qty*basePrice*(0.9+Math.random()*0.3));
+  G.orders.push({
+    id:G.nextOrderId++,type,qty,reward,
+    deadline:G.month+3+Math.floor(Math.random()*3),
+    isExport,
+    label:(isExport?'🌍 Export: ':'📦 ')+ qty+' '+MAT_NAMES[type]
+  });
 }
 
-function hireWorker(){
-  if(state.money<800){ log('Not enough money to hire.'); return; }
-  state.money-=800;
-  state.workers++;
-  log('Worker hired. Total workers: '+state.workers+'.');
+function fulfillOrder(id){
+  let o=G.orders.find(x=>x.id===id);if(!o)return;
+  if(G.inv[o.type]<o.qty){showMsg('Not enough '+MAT_NAMES[o.type]+'!');return;}
+  G.inv[o.type]-=o.qty;G.money+=o.reward;G.totalRevenue+=o.reward;
+  G.reputation=Math.min(100,G.reputation+(o.isExport?5:3));
+  G.orders=G.orders.filter(x=>x.id!==id);
+  showMsg('Order #'+o.id+' delivered! Earned $'+o.reward.toLocaleString());
 }
 
-function fireWorker(){
-  if(state.workers<=0){ log('No workers to fire.'); return; }
-  state.workers--;
-  state.money+=400;
-  log('Worker dismissed. $400 severance recovered.');
+// ---- UPDATE ----
+function update(dt){
+  if(G.speed===0)return;
+  let gdt=dt*G.speed*3;G.tick+=gdt;
+  updateMachines(gdt);updateEconomy(gdt);
+  if(G.msgTimer>0){G.msgTimer-=dt;if(G.msgTimer<=0)document.getElementById('msg').classList.remove('show');}
 }
 
-function sellGarments(){
-  if(state.inv.garment<10){ log('Need at least 10 garments to sell.'); return; }
-  const revenue=10*state.garmentPrice;
-  state.inv.garment-=10;
-  state.money+=revenue;
-  state.totalRevenue+=revenue;
-  log('Sold 10 garments for $'+revenue+'.');
-}
-
-function deliverOrder(id){
-  const o=state.orders.find(v=>v.id===id);
-  if(!o) return;
-  if(state.inv.garment<o.qty){ log('Not enough garments for order #'+id+'.'); return; }
-  state.inv.garment-=o.qty;
-  state.money+=o.reward;
-  state.totalRevenue+=o.reward;
-  state.reputation=Math.min(100,state.reputation+4);
-  state.orders=state.orders.filter(v=>v.id!==id);
-  log('Order #'+id+' delivered! Earned $'+o.reward+'.');
-}
-
-function upgradeMachine(m){
-  const cost=Math.floor(MACH[m.type].cost*0.6*m.level);
-  if(m.level>=5){ log('Machine already at maximum level.'); return; }
-  if(state.money<cost){ log('Not enough money to upgrade.'); return; }
-  state.money-=cost;
-  m.level++;
-  log(MACH[m.type].name+' upgraded to level '+m.level+'.');
-}
-
-function repairMachine(m){
-  const cost=300+100*m.level;
-  if(!m.broken){ log('Machine is already working.'); return; }
-  if(state.money<cost){ log('Not enough money to repair.'); return; }
-  state.money-=cost;
-  m.broken=false;
-  m.progress=0;
-  log(MACH[m.type].name+' repaired for $'+cost+'.');
-}
-
-/* ---------- UI ---------- */
-
+// ---- UI ----
+function showMsg(t){document.getElementById('msg').textContent=t;document.getElementById('msg').classList.add('show');G.msgTimer=3.5;}
+function monthName(){let m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return m[G.month%12]+' Y'+(Math.floor(G.month/12)+1);}
 function updateStats(){
-  const idle=state.machines.filter(m=>!m.worker).length;
-  document.getElementById('stats').innerHTML=
-    '<b>Day '+state.day+'</b><br>'+
-    'Cash: <b>$'+Math.round(state.money)+'</b><br>'+
-    'Workers: <b>'+state.workers+'</b> (idle machines: '+idle+')<br>'+
-    'Reputation: <b>'+Math.round(state.reputation)+'/100</b><br>'+
-    'Cotton price: <b>$'+state.cottonPrice.toFixed(0)+'</b><br>'+
-    'Garment price: <b>$'+state.garmentPrice.toFixed(0)+'</b><br>'+
-    'Revenue earned: <b>$'+Math.round(state.totalRevenue)+'</b><br><br>'+
-    'Cotton: '+state.inv.cotton+'<br>'+
-    'Yarn: '+state.inv.yarn+'<br>'+
-    'Fabric: '+state.inv.fabric+'<br>'+
-    'Dyed Fabric: '+state.inv.dyedFabric+'<br>'+
-    'Garments: '+state.inv.garment;
+  document.getElementById('s-money').textContent='$'+Math.round(G.money).toLocaleString();
+  document.getElementById('s-money').style.color=G.money<0?'#ff5050':'#4ade80';
+  document.getElementById('s-workers').textContent=G.workers;
+  document.getElementById('s-rep').textContent=G.reputation+'/100';
+  document.getElementById('s-month').textContent=monthName();
 }
 
-function updateOrders(){
-  const el=document.getElementById('orders');
-  if(!state.orders.length){
-    el.innerHTML='<div class="small">No active orders. Keep producing garments.</div>';
-    return;
-  }
-  el.innerHTML=state.orders.map(o=>
-    '<div class="order">Order #'+o.id+'<br>'+
-    '<b>'+o.qty+' garments</b> — $'+o.reward+'<br>'+
-    'Due: Day '+o.deadline+'<br>'+
-    '<button class="btn" onclick="deliverOrder('+o.id+')" '+
-    (state.inv.garment>=o.qty?'':'disabled')+'>'+
-    '📦 Deliver</button></div>'
-  ).join('');
-}
+function isUnlocked(type){let d=MACH[type];if(!d)return false;if(d.unlocked)return true;if(d.research)return!!G.research[d.research];return false;}
 
-function showPanel(m){
-  const p=document.getElementById('panel');
-  const def=MACH[m.type];
-  const upCost=Math.floor(def.cost*0.6*m.level);
-  const repairCost=300+100*m.level;
-  p.style.display='block';
-  p.innerHTML=
-    '<b>'+def.name+' #'+m.id+'</b><br>'+
-    'Level: '+m.level+'/5<br>'+
-    'Status: '+(m.broken?'<span style="color:#ff6b6b">Broken</span>':
-      m.worker?'<span style="color:#7fe08a">Working</span>':'<span style="color:#ffd75e">No worker</span>')+'<br>'+
-    'Input: '+NAMES[def.input]+'<br>'+
-    'Output: '+NAMES[def.output]+'<br>'+
-    'Progress: '+Math.round(m.progress/def.time*100)+'%<br><br>'+
-    '<button class="btn" onclick="upgradeSelected()">⬆ Upgrade — $'+upCost+'</button>'+
-    '<button class="btn" onclick="repairSelected()">🔧 Repair — $'+repairCost+'</button>'+
-    '<button class="btn" onclick="closePanel()">✖ Close</button>';
-}
-
-window.upgradeSelected=()=>{ if(selected) upgradeMachine(selected); };
-window.repairSelected=()=>{ if(selected) repairMachine(selected); };
-window.closePanel=()=>{ selected=null; document.getElementById('panel').style.display='none'; };
-window.deliverOrder=deliverOrder;
-
-/* ---------- Rendering ---------- */
-
-function resize(){
-  const r=canvas.parentElement.getBoundingClientRect();
-  canvas.width=r.width; canvas.height=r.height;
-  cellW=canvas.width/MW; cellH=canvas.height/MH;
-}
-window.addEventListener('resize',resize);
-
-function draw(){
-  ctx.fillStyle='#24303b'; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  for(let y=0;y<MH;y++)for(let x=0;x<MW;x++){
-    const px=x*cellW, py=y*cellH;
-    ctx.fillStyle=(x+y)%2?'#2b3a47':'#273542';
-    ctx.fillRect(px,py,cellW,cellH);
-    ctx.strokeStyle='#1c2733';
-    ctx.strokeRect(px+.5,py+.5,cellW-1,cellH-1);
-  }
-
-  for(const m of state.machines){
-    const def=MACH[m.type];
-    const px=m.x*cellW, py=m.y*cellH;
-    ctx.fillStyle=m.broken?'#5a3b3b':def.color;
-    ctx.fillRect(px+2,py+2,cellW-4,cellH-4);
-
-    ctx.font=Math.floor(cellH*0.5)+'px serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(def.icon,px+cellW/2,py+cellH*0.42);
-
-    // progress bar
-    const pct=Math.min(1,m.progress/def.time);
-    ctx.fillStyle='#00000066';
-    ctx.fillRect(px+4,py+cellH-8,cellW-8,4);
-    ctx.fillStyle='#7fe08a';
-    ctx.fillRect(px+4,py+cellH-8,(cellW-8)*pct,4);
-
-    if(!m.worker&&!m.broken){
-      ctx.fillStyle='#ffd75e';
-      ctx.font='bold '+Math.floor(cellH*0.28)+'px sans-serif';
-      ctx.fillText('NO WORKER',px+cellW/2,py+cellH*0.78);
-    }
-    if(selected===m){
-      ctx.strokeStyle='#ffd75e'; ctx.lineWidth=3;
-      ctx.strokeRect(px+2,py+2,cellW-4,cellH-4);
-      ctx.lineWidth=1;
-    }
-  }
-}
-
-/* ---------- Input ---------- */
-
-document.querySelectorAll('.btn[data-tool]').forEach(btn=>{
-  btn.onclick=()=>{
-    tool=btn.dataset.tool;
-    document.querySelectorAll('.btn[data-tool]').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    log('Selected: '+btn.textContent.trim());
+function renderBuildTab(){
+  let cats={
+    'Preparatory':['singeing','desizing','bleaching','mercerizer'],
+    'Dyeing':['dispensing','jet_dye','jigger','padder'],
+    'Colour Kitchen':['colour_mixer','auto_dispenser'],
+    'Printing':['rotary_baby','rotary_prod','flatbed','digital'],
+    'Screen Engraving':['coater','laser_engraver','developer'],
+    'Finishing':['stenter','stenter_print','calender','sanforizer'],
+    'Infrastructure':['boiler','etp','lab','trolley_store'],
+    'Aisles':['path'],
   };
-});
-
-canvas.addEventListener('click',e=>{
-  const r=canvas.getBoundingClientRect();
-  const x=Math.floor((e.clientX-r.left)/cellW);
-  const y=Math.floor((e.clientY-r.top)/cellH);
-  if(x<0||y<0||x>=MW||y>=MH) return;
-
-  const id=state.grid[y][x];
-
-  if(tool==='select'){
-    if(id){
-      selected=state.machines.find(m=>m.id===id);
-      if(selected) showPanel(selected);
-    } else {
-      closePanel();
-    }
-    return;
+  let html='<div class="info-panel" style="font-size:11px;line-height:1.5;margin-bottom:8px">';
+  html+='<b>Inventory</b><br>';
+  for(let k of Object.keys(G.inv)){
+    if(G.inv[k]>0||['greige','dyed','printed','finished','dye_paste','print_paste','screens'].includes(k))
+      html+=MAT_NAMES[k]+': <b>'+Math.round(G.inv[k])+'</b> · ';
   }
+  html+='</div>';
+  for(let cat in cats){
+    html+='<div class="cat"><div class="cat-title">'+cat+'</div>';
+    for(let type of cats[cat]){
+      let def=MACH[type],ok=isUnlocked(type),active=G.tool===type;
+      html+='<button class="item-btn'+(active?' active':'')+(ok?'':' locked')+'" data-type="'+type+'" '+(ok?'':'disabled')+'>';
+      html+='<div class="ic">'+def.icon+'</div><div class="inf"><div class="nm">'+def.name+(ok?'':' 🔒')+'</div>';
+      html+='<div class="det">$'+def.cost.toLocaleString();
+      if(def.input)html+=' · '+MAT_NAMES[def.input]+'→'+MAT_NAMES[def.output];
+      else if(def.generator&&def.output)html+=' · Produces '+MAT_NAMES[def.output];
+      html+='</div></div></button>';
+    }
+    html+='</div>';
+  }
+  return html;
+}
 
-  if(tool==='demolish'){ demolish(x,y); return; }
+function renderOrdersTab(){
+  if(!G.orders.length) return '<div style="padding:12px;color:#5a7a94;font-size:12px">No active orders. Keep producing fabric — orders arrive each month.</div>';
+  let html='';
+  for(let o of G.orders){
+    let canFulfill=G.inv[o.type]>=o.qty;
+    html+='<div class="order-card">';
+    html+='<div>'+o.label+'</div>';
+    html+='<div>Reward: <b>$'+o.reward.toLocaleString()+'</b></div>';
+    html+='<div style="color:#5a7a94;font-size:11px">Due: '+(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][o.deadline%12])+' Y'+(Math.floor(o.deadline/12)+1)+'</div>';
+    html+='<div style="font-size:11px">You have: <b style="color:'+(canFulfill?'#4ade80':'#ff6b6b')+'">'+Math.round(G.inv[o.type])+'/'+o.qty+'</b></div>';
+    html+='<button class="fulfill-btn" data-oid="'+o.id+'" '+(canFulfill?'':'disabled')+'>📦 Deliver</button>';
+    html+='</div>';
+  }
+  return html;
+}
 
-  if(MACH[tool]) placeMachine(tool,x,y);
+function renderResearchTab(){
+  let html='';
+  for(let r of RESEARCH){
+    let done=!!G.research[r.id],avail=!r.requires||!!G.research[r.requires];
+    html+='<div class="r-item'+(done?' done':'')+'">';
+    html+='<div class="rn">'+r.icon+' '+r.name+(done?' ✅':'')+'</div>';
+    html+='<div class="rd">'+r.desc+'</div>';
+    if(!done){
+      html+='<div class="rc">$'+r.cost.toLocaleString()+(r.requires&&!G.research[r.requires]?' (needs '+RESEARCH.find(x=>x.id===r.requires).name+')':'')+'</div>';
+      html+='<button class="r-btn" data-rid="'+r.id+'" '+(avail&&G.money>=r.cost?'':'disabled')+'>Research</button>';
+    }
+    html+='</div>';
+  }
+  return html;
+}
+
+function renderFinanceTab(){
+  let upkeep=0;for(let b of G.buildings){let d=MACH[b.type];if(d)upkeep+=d.upkeep;}
+  let wages=G.workers*200;
+  let machCount={};G.buildings.forEach(b=>{let d=MACH[b.type];if(d&&!d.isPath){machCount[d.cat]=(machCount[d.cat]||0)+1;}});
+  let html='<div class="info-panel"><b>💰 Monthly Summary</b><div style="margin-top:6px;line-height:1.8">';
+  html+='Total Revenue: <b style="color:#4ade80">$'+G.totalRevenue.toLocaleString()+'</b><br>';
+  html+='Monthly Upkeep: <b style="color:#ff7070">-$'+upkeep+'/mo</b><br>';
+  html+='Monthly Wages ('+G.workers+' workers): <b style="color:#ff7070">-$'+wages+'/mo</b><br>';
+  html+='Greige Price: <b>$'+Math.round(G.greige_price)+'/bale</b><br>';
+  html+='Reputation: <b style="color:#f2b134">'+G.reputation+'/100</b><br>';
+  html+='Loan: <b>$'+G.loan.toLocaleString()+'</b> / $'+G.maxLoan.toLocaleString()+'<br>';
+  html+='<hr style="border-color:#1e2a38;margin:6px 0">';
+  html+='<b>Machines by Department:</b><br>';
+  for(let cat of ['prep','dye','kitchen','print','engrave','finish','infra']){
+    let names={prep:'Preparatory',dye:'Dyeing',kitchen:'Colour Kitchen',print:'Printing',engrave:'Screen Engr.',finish:'Finishing',infra:'Infrastructure'};
+    html+=names[cat]+': <b>'+(machCount[cat]||0)+'</b><br>';
+  }
+  html+='</div>';
+  html+='<button class="r-btn" id="btn-borrow" '+(G.loan>=G.maxLoan?'disabled':'')+'>Borrow $5,000</button> ';
+  html+='<button class="r-btn" id="btn-repay" '+(G.loan<=0||G.money<5000?'disabled':'')+'>Repay $5,000</button>';
+  html+='</div>';
+  return html;
+}
+
+let currentTab='build';
+function renderTab(){
+  let el=document.getElementById('tab-content');
+  switch(currentTab){
+    case'build':el.innerHTML=renderBuildTab();bindBuild();break;
+    case'orders':el.innerHTML=renderOrdersTab();bindOrders();break;
+    case'research':el.innerHTML=renderResearchTab();bindResearch();break;
+    case'finance':el.innerHTML=renderFinanceTab();bindFinance();break;
+  }
+}
+
+function bindBuild(){document.querySelectorAll('.item-btn').forEach(btn=>{btn.addEventListener('click',()=>{
+  G.demolish=false;document.getElementById('btn-demolish').classList.remove('active');
+  G.tool=G.tool===btn.dataset.type?null:btn.dataset.type;renderTab();});});}
+
+function bindOrders(){document.querySelectorAll('.fulfill-btn').forEach(btn=>{btn.addEventListener('click',()=>{
+  fulfillOrder(+btn.dataset.oid);renderTab();updateStats();});});}
+
+function bindResearch(){document.querySelectorAll('.r-btn[data-rid]').forEach(btn=>{btn.addEventListener('click',()=>{
+  let rid=btn.dataset.rid,r=RESEARCH.find(x=>x.id===rid);
+  if(r&&G.money>=r.cost&&!G.research[rid]){G.money-=r.cost;G.research[rid]=true;showMsg(r.name+' researched!');renderTab();updateStats();}});});}
+
+function bindFinance(){
+  let bb=document.getElementById('btn-borrow'),br=document.getElementById('btn-repay');
+  if(bb)bb.addEventListener('click',()=>{if(G.loan<G.maxLoan){G.loan+=5000;G.money+=5000;showMsg('Borrowed $5,000');renderTab();updateStats();}});
+  if(br)br.addEventListener('click',()=>{if(G.loan>0&&G.money>=5000){G.loan-=5000;G.money-=5000;showMsg('Repaid $5,000');renderTab();updateStats();}});
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');
+  currentTab=tab.dataset.tab;renderTab();});});
+
+// HUD
+document.getElementById('btn-pause').addEventListener('click',()=>{G.speed=G.speed===0?1:0;document.getElementById('btn-pause').textContent=G.speed===0?'▶ Play':'⏸ Pause';updSpd();});
+document.getElementById('btn-speed').addEventListener('click',()=>{if(G.speed===0)G.speed=1;else if(G.speed===1)G.speed=2;else if(G.speed===2)G.speed=3;else G.speed=1;updSpd();});
+document.getElementById('btn-demolish').addEventListener('click',()=>{G.demolish=!G.demolish;if(G.demolish)G.tool=null;document.getElementById('btn-demolish').classList.toggle('active',G.demolish);renderTab();});
+document.getElementById('btn-buy-greige').addEventListener('click',()=>{
+  let cost=Math.round(10*G.greige_price);
+  if(G.money<cost){showMsg('Not enough money for greige fabric!');return;}
+  G.money-=cost;G.inv.greige+=10;showMsg('Bought 10 greige bales for $'+cost);updateStats();if(currentTab==='build')renderTab();
+});
+document.getElementById('btn-hire').addEventListener('click',()=>{
+  if(G.money<1200){showMsg('Not enough to hire!');return;}
+  G.money-=1200;G.workers++;showMsg('Worker hired. Total: '+G.workers);updateStats();
 });
 
-document.getElementById('buyCotton').onclick=buyCotton;
-document.getElementById('hire').onclick=hireWorker;
-document.getElementById('fire').onclick=fireWorker;
-document.getElementById('sellGarments').onclick=sellGarments;
-document.getElementById('pause').onclick=()=>{ state.paused=!state.paused; };
-document.getElementById('save').onclick=saveGame;
-document.getElementById('load').onclick=loadGame;
-document.getElementById('reset').onclick=()=>{ newGame(); };
+function updSpd(){document.getElementById('speed-display').textContent=G.speed===0?'⏸ Paused':G.speed===1?'▶ Normal':G.speed===2?'▶▶ Fast':'▶▶▶ Ultra';}
 
-/* ---------- Main loop ---------- */
+// ---- INPUT ----
+let isDragging=false,mouseDown=false;
+C.addEventListener('mousedown',e=>{mouseDown=true;isDragging=false;G.dragStart={x:e.clientX,y:e.clientY};G.dragCam={x:G.cameraX,y:G.cameraY};});
+C.addEventListener('mousemove',e=>{
+  let rect=C.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;G.hover=fromScreen(mx,my);
+  if(mouseDown){let dx=e.clientX-G.dragStart.x,dy=e.clientY-G.dragStart.y;if(Math.abs(dx)>3||Math.abs(dy)>3)isDragging=true;if(isDragging){G.cameraX=G.dragCam.x+dx;G.cameraY=G.dragCam.y+dy;}}
+  if(mouseDown&&!isDragging&&G.tool&&MACH[G.tool]&&MACH[G.tool].isPath){let{col,row}=fromScreen(mx,my);if(col>=0&&row>=0&&col<COLS&&row<ROWS)placeBuild(G.tool,col,row);}
+});
+C.addEventListener('mouseup',e=>{
+  if(!isDragging){let rect=C.getBoundingClientRect(),{col,row}=fromScreen(e.clientX-rect.left,e.clientY-rect.top);
+    if(col>=0&&row>=0&&col<COLS&&row<ROWS){
+      if(G.demolish)demolishAt(col,row);
+      else if(G.tool)placeBuild(G.tool,col,row);
+      else{
+        // Click on a building to see details / repair
+        let t=G.grid[row][col];
+        if(t.building){
+          let b=G.buildings.find(x=>x.id===t.building);
+          if(b&&b.broken){
+            let def=MACH[b.type],cost=Math.floor(def.cost*0.15);
+            if(G.money>=cost){G.money-=cost;b.broken=false;b.progress=0;showMsg(def.name+' repaired for $'+cost);updateStats();}
+            else showMsg('Need $'+cost+' to repair.');
+          }
+        }
+      }
+    }}
+  mouseDown=false;isDragging=false;
+});
+C.addEventListener('wheel',e=>{e.preventDefault();let old=G.zoom;G.zoom*=e.deltaY>0?0.92:1.08;G.zoom=Math.max(0.25,Math.min(2.5,G.zoom));
+  let rect=C.getBoundingClientRect(),mx=e.clientX-rect.left-C.width/2,my=e.clientY-rect.top-C.height/2;
+  G.cameraX=mx-(mx-G.cameraX)*(G.zoom/old);G.cameraY=my-(my-G.cameraY)*(G.zoom/old);},{passive:false});
+
+// Tooltip
+C.addEventListener('mousemove',e=>{
+  let rect=C.getBoundingClientRect(),{col,row}=fromScreen(e.clientX-rect.left,e.clientY-rect.top),tip=document.getElementById('tooltip');
+  if(col>=0&&row>=0&&col<COLS&&row<ROWS){let t=G.grid[row][col];
+    if(t.building){let b=G.buildings.find(x=>x.id===t.building);if(b){let def=MACH[b.type];
+      let html='<b>'+def.icon+' '+def.name+'</b>';
+      if(b.broken)html+=' <span style="color:#ff6b6b">[BROKEN — click to repair]</span>';
+      html+='<br>'+def.desc;
+      if(def.input)html+='<br>In: '+MAT_NAMES[def.input]+(def.needs?' + '+MAT_NAMES[def.needs]:'')+(def.needs_screen?' + Screen':'')+' → '+MAT_NAMES[def.output];
+      if(def.generator&&def.output)html+='<br>Produces: '+MAT_NAMES[def.output];
+      html+='<br>Produced: '+b.produced+' · Upkeep: $'+def.upkeep+'/mo';
+      html+='<br>Worker: '+(b.hasWorker?'✅ Assigned':'❌ None');
+      tip.innerHTML=html;tip.style.display='block';tip.style.left=(e.clientX-rect.left+15)+'px';tip.style.top=(e.clientY-rect.top+15)+'px';return;}}}
+  tip.style.display='none';
+});
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){G.tool=null;G.demolish=false;renderTab();}
+  if(e.key===' '||e.key==='p'){e.preventDefault();G.speed=G.speed===0?1:0;document.getElementById('btn-pause').textContent=G.speed===0?'▶ Play':'⏸ Pause';updSpd();}
+  if(e.key==='s'&&e.ctrlKey){e.preventDefault();saveGame();}
+});
+
+// ---- SAVE/LOAD ----
+function saveGame(){
+  let save={money:G.money,workers:G.workers,month:G.month,day:G.day,reputation:G.reputation,totalRevenue:G.totalRevenue,
+    research:G.research,loan:G.loan,inv:G.inv,orders:G.orders,nextOrderId:G.nextOrderId,
+    greige_price:G.greige_price,buildId:G.buildId,
+    buildings:G.buildings.map(b=>({type:b.type,col:b.col,row:b.row,income:b.income,produced:b.produced,level:b.level,broken:b.broken})),
+    grid:G.grid.map(row=>row.map(t=>({terrain:t.terrain})))};
+  localStorage.setItem('textileTycoonV2',JSON.stringify(save));showMsg('Game saved!');
+}
+
+function loadSave(){
+  let s=localStorage.getItem('textileTycoonV2');if(!s)return false;
+  try{
+    let save=JSON.parse(s);
+    Object.assign(G,{money:save.money,workers:save.workers,month:save.month,day:save.day,reputation:save.reputation,
+      totalRevenue:save.totalRevenue,research:save.research||{},loan:save.loan||0,inv:save.inv,
+      orders:save.orders||[],nextOrderId:save.nextOrderId||1,greige_price:save.greige_price||50,buildId:save.buildId||0});
+    G.grid=[];for(let r=0;r<ROWS;r++){G.grid[r]=[];for(let c=0;c<COLS;c++)G.grid[r][c]={terrain:save.grid[r][c].terrain,building:null};}
+    G.buildings=[];
+    for(let bs of save.buildings){
+      let def=MACH[bs.type];if(!def)continue;
+      let b={type:bs.type,col:bs.col,row:bs.row,id:G.buildId++,progress:0,income:bs.income||0,
+        hasWorker:false,level:bs.level||1,produced:bs.produced||0,broken:bs.broken||false};
+      G.buildings.push(b);
+      for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
+        if(!def.isPath)G.grid[b.row+dr][b.col+dc].building=b.id;
+      }
+    }
+    showMsg('Game loaded!');return true;
+  }catch(e){return false;}
+}
+
+// ---- INIT & LOOP ----
+function init(){
+  resize();initGrid();
+  let ep=toIso(26,42);G.cameraX=-ep.x*G.zoom;G.cameraY=-ep.y*G.zoom+C.height*0.25;
+  renderTab();updateStats();
+  if(!loadSave()){
+    showMsg('Welcome to Textile Tycoon! Build aisles from the gate, then place processing machines beside them.');
+  }
+}
 
 let last=performance.now();
-function loop(now){
-  const dt=Math.min(0.1,(now-last)/1000);
-  last=now;
-
-  if(!state.paused){
-    state.tick++;
-    updateMachines(dt);
-    updateEconomy(dt);
+function gameLoop(now){
+  let dt=Math.min(0.1,(now-last)/1000);last=now;
+  update(dt);draw();
+  if(Math.floor(now/500)!==Math.floor((now-dt*1000)/500)){updateStats();if(currentTab!=='build')renderTab();
+    else{let el=document.querySelector('.info-panel');if(el){
+      let html='<b>Inventory</b><br>';
+      for(let k of Object.keys(G.inv)){if(G.inv[k]>0||['greige','dyed','printed','finished','dye_paste','print_paste','screens'].includes(k))html+=MAT_NAMES[k]+': <b>'+Math.round(G.inv[k])+'</b> · ';}
+      el.innerHTML=html;
+    }}
   }
-
-  draw();
-  updateStats();
-  updateOrders();
-  if(selected) showPanel(selected);
-
-  requestAnimationFrame(loop);
+  requestAnimationFrame(gameLoop);
 }
-
-newGame();
-resize();
-requestAnimationFrame(loop);
+init();requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
