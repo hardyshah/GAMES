@@ -72,7 +72,7 @@ button.on{background:var(--acc);color:#1b1b1b}
   </div>
   <div id="tabs">
     <div class="tab on" data-t="build">Build</div><div class="tab" data-t="orders">Orders</div>
-    <div class="tab" data-t="research">Research</div><div class="tab" data-t="finance">Finance</div>
+    <div class="tab" data-t="research">Research</div><div class="tab" data-t="finance">Finance</div><div class="tab" data-t="rules">Rules</div>
   </div>
   <div id="tc"></div>
 </aside>
@@ -438,14 +438,25 @@ function unpaint(m){m.col=null;(m.mats||[]).forEach(x=>x.color.copy(x.userData.b
 // so no trolley ever meets another; trolleys move at walking pace (1.2 m/s); the push crew follows the total
 // load (fabric + trolley tare): 1 person up to 300 kg, 2 up to 600 kg, 3 above (the third pulls at the front).
 // =====================================================================
+// Rule values, as in the Sheet "Textile Tycoon — Trolleys, Workers & Plant Rules" (Loops and Trolleys & crews tabs)
+const RULES={speed:1.2,crew:[[300,1],[600,2],[Infinity,3]],
+ loops:{A:{start:3,perBay:1,max:6,loads:[420,600,300,520,380,560],tare:140},B:{start:2,perBay:.5,max:4,loads:[300,450,300,450],tare:140},C:{start:2,perBay:0,max:2,loads:[220,180],tare:60}},
+ text:[['Trolley loops','Trolleys run on closed one-way loops, equally spaced and at the same speed, so no trolley ever meets another.','Yellow lanes with direction arrows; the Trolley loops view'],
+  ['Speed','Walking pace: 1.2 m/s at 1× game speed.','Trolleys on the loops'],
+  ['Push crew','Crew sized by total load (fabric + trolley tare): up to 300 kg 1 person, up to 600 kg 2, above that 3, with the third pulling at the front.','Load tag on each trolley: "kg · people"'],
+  ['Clear lanes','No machine may stand on a yellow lane.','Build preview: "Keep the trolley lane clear"'],
+  ['Operators','Each production machine needs one operator. Without one it stops and its operator disappears.','Machines; Operators stat in the sidebar'],
+  ['Operator poses','Panel while running, stand while waiting for material, kneel with a spanner when broken. The inspector inspects.','At each machine'],
+  ['Trolley count','More trolley bays put more trolleys on the wet-processing and printing loops.','Loops; trolleys on the floor'],
+  ['Crews and wages','Push crews are visual only: they don\'t count as operators or cost wages.','Floor rules card on the Finance tab']]};
 const GA=[];
 function loopPath(pts){const P=pts.map(p=>new T.Vector3(p[0],0,p[1]));P.push(P[0]);const seg=[];let tot=0;for(let i=0;i<P.length-1;i++){const l=P[i].distanceTo(P[i+1]);seg.push([tot,l,i]);tot+=l}
  const at=d=>{d=((d%tot)+tot)%tot;for(const[s0,l,i]of seg)if(d<=s0+l+1e-6)return P[i].clone().lerp(P[i+1],(d-s0)/l);return P[0].clone()};
  const head=d=>{const a=at(d-.8),b=at(d+.8);return Math.atan2(b.x-a.x,b.z-a.z)};return{pts,tot,at,head}}
 const LOOPS={
- A:Object.assign(loopPath([[-56,-17.2],[86,-17.2],[86,-14.8],[-56,-14.8]]),{name:'Wet-processing loop',kind:'batch',u:'sto',loads:[420,600,300,520,380,560],tare:140,sp:1.2}),
- B:Object.assign(loopPath([[28.8,-12.5],[28.8,38],[31.2,38],[31.2,-12.5]]),{name:'Printing loop',kind:'batch',u:'prt',loads:[300,450],tare:140,sp:1.2}),
- C:Object.assign(loopPath([[-21.2,-12.5],[-21.2,38],[-18.8,38],[-18.8,-12.5]]),{name:'Colour-drum loop',kind:'drum',u:'ck',loads:[220,180],tare:60,sp:1.2})};
+ A:Object.assign(loopPath([[-56,-17.2],[86,-17.2],[86,-14.8],[-56,-14.8]]),{name:'Wet-processing loop',kind:'batch',u:'sto',loads:RULES.loops.A.loads,tare:RULES.loops.A.tare,sp:RULES.speed}),
+ B:Object.assign(loopPath([[28.8,-12.5],[28.8,38],[31.2,38],[31.2,-12.5]]),{name:'Printing loop',kind:'batch',u:'prt',loads:RULES.loops.B.loads,tare:RULES.loops.B.tare,sp:RULES.speed}),
+ C:Object.assign(loopPath([[-21.2,-12.5],[-21.2,38],[-18.8,38],[-18.8,-12.5]]),{name:'Colour-drum loop',kind:'drum',u:'ck',loads:RULES.loops.C.loads,tare:RULES.loops.C.tare,sp:RULES.speed})};
 const LANES=Object.values(LOOPS).map(L=>{const xs=L.pts.map(q=>q[0]),zs=L.pts.map(q=>q[1]);return[Math.min(...xs)-1.6,Math.max(...xs)+1.6,Math.min(...zs)-1.6,Math.max(...zs)+1.6]});
 // lane markings: yellow edge lines and direction arrows
 {const LM=mat(0xf5c400,{roughness:.6});for(const L of Object.values(LOOPS)){const xs=L.pts.map(q=>q[0]),zs=L.pts.map(q=>q[1]);const x0=Math.min(...xs)-1.1,x1=Math.max(...xs)+1.1,z0=Math.min(...zs)-1.1,z1=Math.max(...zs)+1.1;
@@ -482,12 +493,12 @@ const UNIFORM={prep:'prep',lab:'lab',dye:'dye',kitchen:'ck',engrave:'eng',rotary
 function uniformFor(m){return m.type==='boiler'?'utl':m.type==='etp'?'etp':m.type==='qc'?'ins':m.type==='chem'?'chm':UNIFORM[m.def.zone]||'utl'}
 // ---------------- trolleys + push crews on the loops ----------------
 const MOV=new T.Group();S.add(MOV);let movers=[];
-function crewFor(kg){return kg>600?3:kg>300?2:1}
+function crewFor(kg){return RULES.crew.find(c=>kg<=c[0])[1]}
 function loadTag(txt){const s=new T.Sprite(new T.SpriteMaterial({map:spriteTex(txt,'#fde68a','rgba(18,24,32,.85)',256,64,'bold 30px Arial'),transparent:true}));s.scale.set(1.5,.38,1);s.raycast=()=>{};return s}
 function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_drum_trolley':'batching_trolley';
  if(MODELS[f]){const c=MODELS[f].clone();if(kind!=='drum')c.rotation.y=PI/2;g.add(c)}else{const b=batcher(g,{col:0x1f6fd0,fab:0x1b2a4a,r:.55});b.scale.setScalar(.75);b.rotation.y=PI/2}
  g.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(g),c=bb.getCenter(new T.Vector3());g.children.forEach(o=>{o.position.x-=c.x;o.position.z-=c.z});g.userData.len=bb.getSize(new T.Vector3()).z;return g}
-function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length;return L===LOOPS.A?Math.min(6,3+bays):L===LOOPS.B?Math.min(4,2+Math.floor(bays/2)):2}
+function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length,k=Object.keys(LOOPS).find(q=>LOOPS[q]===L),r=RULES.loops[k];return Math.min(r.max,r.start+Math.floor(bays*r.perBay))}
 function syncTrolleys(){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
  for(const v of movers){MOV.remove(v.tr);v.ws.forEach(w=>{MOV.remove(w.root);WKS.splice(WKS.indexOf(w),1)})}movers=[];
  for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const load=L.loads[i%L.loads.length],tot=load+L.tare,np=crewFor(tot);
@@ -637,6 +648,8 @@ function renderTab(){const tc=$('tc');let h='';
   for(const k of list){const d=DEF[k],ok=unlocked(k);h+=`<button class="ib${tool===k?' on':''}" data-a="tool" data-k="${k}" ${ok?'':'disabled'}><span class="ic">${d.icon}</span><span><div class="nm">${d.name}${ok?'':' 🔒'}</div><div class="dt">${fmt(d.cost)} · ${fmt(d.up)}/mo${d.time?' · '+recipeText(d):''}${ok?'':' · research first'}</div></span></button>`}}}
  else if(tab==='orders'){h+=stockHTML();if(!G.orders.length)h+='<div class="card">No open orders. New buyers write in at the start of each month.</div>';
   for(const o of G.orders){const ok=G.inv[o.type]>=o.qty;h+=`<div class="card">${o.exp?'🌍 Export':'📦 Domestic'} order #${o.id}<br><b>${o.qty} lots ${MAT[o.type]}</b> — ${fmt(o.reward)}<br><span class="${o.due-G.month<=1?'bad':''}">Due ${monthName(o.due)}</span> · you have <span class="${ok?'good':'bad'}">${Math.floor(G.inv[o.type])}/${o.qty}</span><div class="row"><button data-a="deliver" data-k="${o.id}" ${ok?'':'disabled'}>Deliver</button></div></div>`}}
+ else if(tab==='rules'){h+='<div class="card"><b>Plant rules</b> (as in the Kibrom Plant 3D layout)</div>';for(const r of RULES.text)h+=`<div class="card"><b>${r[0]}</b><br>${r[1]}<br><span style="color:var(--mut)">Where: ${r[2]}</span></div>`;
+  const on=movers.length,crew=movers.reduce((a,v)=>a+v.np,0);h+=`<div class="card"><b>On the floor now</b><br>${on} trolleys on ${Object.keys(LOOPS).length} loops, pushed by ${crew} people</div>`}
  else if(tab==='research'){for(const r of RESEARCH){const done=G.research[r.id],can=!r.req||G.research[r.req];h+=`<div class="card${done?' done':''}">${r.icon} <b>${r.name}</b>${done?' ✅':''}<br><span style="color:var(--mut)">${r.desc}</span>${done?'':`<div class="row"><button data-a="res" data-k="${r.id}" ${can&&G.money>=r.cost?'':'disabled'}>Research ${fmt(r.cost)}</button>${can?'':' <span class="bad">needs '+RESEARCH.find(x=>x.id===r.req).name+'</span>'}</div>`}</div>`}}
  else{let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const busy=machines.filter(m=>!m.def.util&&m.worker).length,need=machines.filter(m=>!m.def.util).length;
   h+=stockHTML()+`<div class="card"><b>Monthly running cost</b><br>Machine upkeep ${fmt(up)}<br>Wages ${G.workers} × $600 = ${fmt(G.workers*600)}<br>Loan interest ${fmt(G.loan*.01)}<br>Total revenue so far <span class="good">${fmt(G.revenue)}</span></div>
