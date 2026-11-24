@@ -350,7 +350,7 @@ const DEF={
  flatbed:{name:'Automatic flatbed screen printer',zone:'flat',icon:'📋',cost:38000,up:1400,time:8,need:{rfd:1,paste:1,screens:.15},out:{printed:1},research:'flatbed',glb:'flatbed_screen_printer',ph:['Blanket advances','Screens lowering','Squeegee stroke','Screens lifting','Drying'],b:(g,A)=>flatbed(g,A),desc:'10-colour, 1800 mm automatic flatbed with stop-and-go blanket and dryer.'},
  digital:{name:'Wide-format inkjet printer',zone:'flat',icon:'💻',cost:30000,up:1100,time:7,need:{rfd:1,paste:.25},out:{printed:1},research:'digital',glb:'wide_format_printer',ph:['Loading roll','Inkjet passes','Curing','Rewinding'],b:(g,A)=>digital(g,A,9.5,'INKJET'),desc:'3.2 m roll-to-roll inkjet printer — no screens, very little paste.'},
  stenter:{name:'Stenter, 6 chamber',zone:'finish',icon:'📏',cost:30000,up:1300,time:7,stenter:1,need:{},out:{},glb:'stenter_ekta_6ch',ph:['Padding finish','Pinning on chains','Drying in 6 chambers','Cooling & batching'],b:(g,A)=>stenter(g,A,16,6),desc:'6-chamber pin-cum-clip gas-fired stenter. Finishes dyed or printed fabric for delivery.'},
- bay:{name:'A-frame trolley bay',zone:'trolley',icon:'🛒',cost:3000,up:40,util:1,glb:[{f:'rect_frame_trolley',x:-1.4,z:-1.3},{f:'rect_frame_trolley',x:1.4,z:-1.3},{f:'rect_frame_trolley',x:-1.4,z:1.3},{f:'rect_frame_trolley',x:1.4,z:1.3}],ph:['WIP buffer: 4 trolleys'],b:(g,A)=>trolleyBay(g,A),desc:'Four A-frame batch trolleys buffer WIP between departments. +5% plant speed each (max 3) and more trolleys on the aisle.'},
+ bay:{name:'Batching trolley bay',zone:'trolley',icon:'🛒',cost:3000,up:40,util:1,glb:[{f:'batching_trolley',x:0,z:-2.25},{f:'batching_trolley',x:0,z:-.75},{f:'batching_trolley',x:0,z:.75},{f:'batching_trolley',x:0,z:2.25}],ph:['WIP buffer: 4 trolleys'],b:(g,A)=>trolleyBay(g,A),desc:'Four channel-type batching trolleys buffer WIP between departments. +5% plant speed each (max 3) and more trolleys on the aisle.'},
  boiler:{name:'Electric steam boiler',zone:'any',icon:'♨️',cost:12000,up:500,util:1,glb:'electric_steam_boiler',ph:['Steam on line: 10 bar'],b:(g,A)=>boiler(g,A),desc:'500 kg/h steam for preparatory, dyeing and finishing. +15% speed on those machines.'},
  etp:{name:'Effluent treatment plant',zone:'any',icon:'♻️',cost:16000,up:600,util:1,research:'etp',glb:[{f:'etp_clarifier',x:0,z:0},{f:'daf_unit',x:0,z:9.5}],ph:['Clarifying & flotation'],b:(g,A)=>etp(g,A),desc:'Clarifier and DAF flotation unit. Needed for reputation above 70 and for export orders.'},
  qc:{name:'Fabric inspection machine',zone:'any',icon:'🔬',cost:7000,up:300,util:1,glb:'inspection_machine',ph:['Inspecting & grading'],b:(g,A)=>qcLab(g,A),desc:'Batch-to-roll inspection: grades every lot. +1 reputation a month and +5% order value.'}};
@@ -366,13 +366,14 @@ const RESEARCH=[
  {id:'market',name:'Domestic marketing',desc:'More orders arrive each month.',cost:8000,icon:'📰'},
  {id:'lean',name:'Lean maintenance',desc:'−15% machine upkeep and half the breakdowns.',cost:12000,icon:'🔧'}];
 const VIEWS=[
- ['Overview',[15,0,-2],190,.62,.92,'Your integrated plant: preparatory, lab & dispensing, dyeing hall, colour kitchen, screen engraving, rotary printing, flatbed & digital bay, finishing and trolley storage. Pick a machine in Build and place it in its department.'],
+ ['Overview',[15,0,-2],190,.62,.92,'Your integrated plant (one-way trolley loops in yellow lanes): preparatory, lab & dispensing, dyeing hall, colour kitchen, screen engraving, rotary printing, flatbed & digital bay, finishing and trolley storage. Pick a machine in Build and place it in its department.'],
  ['Preparatory',[60,2,-1],70,.6,.85,'Gas singeing, then the continuous desize, scour & bleach range. Its output, PFD fabric, feeds both dyeing and printing.'],
  ['Dyeing dept',[-34,2,-30],62,.7,.9,'Left room: automatic dye dispensing systems and powder dissolving tanks make the recipes. Right hall: HT jets and HTHP jiggers turn PFD fabric + a recipe into dyed fabric.'],
  ['Colour kitchen',[-40,2,-8],48,.5,.85,'Colour weighing & recipe stations and the 24-colour auto paste dispenser make print paste for every print line.'],
  ['Screen engraving',[-32,1.5,20],62,.5,.85,'Rotary screen lacquering machines and the laser engraver make the screens the rotary and flatbed lines wear out.'],
  ['Rotary printing',[5,2,12],80,.55,.85,'Baby rotary for samples and the Embee Infinium TD 8-colour rotary for production, with its gas-fired dryer.'],
- ['Trolley storage',[-52,1,18],46,.6,.9,'A-frame batch trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
+ ['Trolley loops',[0,0,-16],95,.35,.8,'Plant rules: trolleys run on one-way loops, equally spaced at walking pace (1.2 m/s), so no trolley ever meets another. The push crew follows the total load: 1 person up to 300 kg, 2 up to 600 kg, 3 above (the third pulls at the front). Lanes stay clear: no machine may stand on a yellow lane.'],
+ ['Trolley storage',[-52,1,18],46,.6,.9,'Channel-type batching trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
  ['Flatbed & digital',[60,1.5,27],55,.55,.8,'10-colour automatic flatbed screen printer and wide-format inkjet printers.'],
  ['Finishing',[40,5,-30],90,.6,.8,'6-chamber pin-cum-clip stenters heat-set, dry and width-control dyed or printed fabric into deliverable finished goods.']];
 
@@ -395,18 +396,20 @@ function buildModel(def){const outer=new T.Group(),inner=new T.Group();outer.add
  inner.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(inner),c=bb.getCenter(new T.Vector3()),s=bb.getSize(new T.Vector3());
  inner.position.x-=c.x;inner.position.z-=c.z;inner.position.y-=Math.min(0,bb.min.y);if(!def.w){def.w=Math.ceil(s.x+.3);def.d=Math.ceil(s.z+.3);def.h=s.y}return{outer,A}}
 // load a library model (base64 gzip GLB) and merge its meshes by material so a plant full of detailed machines stays fast
+const MODEL_SCALE={batching_trolley:.001};
 async function loadModel(f){const r=await fetch('models/'+f+'.txt');if(!r.ok)throw new Error(f+' missing');const bin=Uint8Array.from(atob((await r.text()).trim()),ch=>ch.charCodeAt(0));
  const buf=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
  const scene=await new Promise((res,rej)=>new T.GLTFLoader().parse(buf,'',g=>res(g.scene),rej));scene.updateMatrixWorld(true);
  const groups=new Map();scene.traverse(o=>{if(!o.isMesh||!o.geometry)return;let g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.normal)g.computeVertexNormals();if(g.index)g=g.toNonIndexed();
   const mt=Array.isArray(o.material)?o.material[0]:o.material,key=mt.uuid+'|'+Object.keys(g.attributes).sort().join(',');if(!groups.has(key))groups.set(key,{mt,gs:[]});groups.get(key).gs.push(g)});
- const out=new T.Group();for(const{mt,gs}of groups.values()){const mg=T.BufferGeometryUtils.mergeBufferGeometries(gs,false);if(!mg)continue;const m=new T.Mesh(mg,mt);m.castShadow=m.receiveShadow=!mt.transparent;if(mt.transparent)mt.depthWrite=false;out.add(m)}
+ const out=new T.Group();for(const{mt,gs}of groups.values()){const mg=T.BufferGeometryUtils.mergeBufferGeometries(gs,false);if(!mg)continue;if(MODEL_SCALE[f])mg.scale(MODEL_SCALE[f],MODEL_SCALE[f],MODEL_SCALE[f]);const m=new T.Mesh(mg,mt);m.castShadow=m.receiveShadow=!mt.transparent;if(mt.transparent)mt.depthWrite=false;out.add(m)}
  return out}
 function dims(def,rot){if(!def.w)buildModel(def);return rot%2?[def.d,def.w]:[def.w,def.d]}
 function zoneOf(x,z){for(const k in ZONES){const r=ZONES[k].r;if(x>=r[0]&&x<=r[1]&&z>=r[2]&&z<=r[3])return k}return null}
 function rectOK(def,x,z,rot,ignore){const[w,d]=dims(def,rot),a=[x-w/2,x+w/2,z-d/2,z+d/2];
  if(def.zone==='any'){if(a[0]<X0||a[1]>X1||a[2]<Z0||a[3]>Z1)return 'Outside the plant'}
  else{const r=ZONES[def.zone].r;if(a[0]<r[0]||a[1]>r[1]||a[2]<r[2]||a[3]>r[3])return 'Must stand inside '+ZONES[def.zone].name}
+ for(const l of LANES)if(a[0]<l[1]&&a[1]>l[0]&&a[2]<l[3]&&a[3]>l[2])return 'Keep the trolley lane clear';
  for(const m of machines){if(m===ignore)continue;const[w2,d2]=dims(m.def,m.rot);if(Math.abs(m.x-x)*2<w+w2+1&&Math.abs(m.z-z)*2<d+d2+1)return 'Too close to '+m.name}
  return ''}
 const ghostMat=new T.MeshBasicMaterial({color:0x4ade80,transparent:true,opacity:.35,depthWrite:false});
@@ -417,9 +420,10 @@ function addMachine(type,x,z,rot,o){o=o||{};const def=DEF[type];const{outer,A}=b
  const m={id:++MID,type,def,x,z,rot,g:outer,A,mt:Math.random()*20,progress:0,hold:false,worker:false,broken:!!o.broken,level:o.level||1,produced:o.produced||0,col:null,name:o.name||def.name+(n>1?' #'+n:''),status:'',running:false,mats:null};
  outer.traverse(q=>{q.userData.mid=m.id});
  const bb0=new T.Box3().setFromObject(outer);m.beacon=new T.Group();cyl(.04,.9,STd,0,.45,0,'y',m.beacon,8);m.lamp=sph(.16,mat(0x22c55e,{emissive:0x22c55e,emissiveIntensity:1}),0,1,0,1,1,1,m.beacon);m.beacon.position.set(bb0.max.x-x-.4,bb0.max.y,bb0.min.z-z+.4);m.beacon.traverse(q=>{q.raycast=()=>{}});outer.add(m.beacon);
+ if(type!=='bay'){const w=mkWorker(uniformFor(m));w.root.position.set(0,0,(def.d||4)/2+.6);w.root.rotation.y=PI;outer.add(w.root);m.op=w}
  m.lab=new T.Sprite(new T.SpriteMaterial({depthTest:false,transparent:true}));m.lab.scale.set(7.2,1.12,1);m.lab.position.set(0,(def.h||4)+1.4,0);m.lab.renderOrder=8;m.lab.raycast=()=>{};m.lab.visible=showLabels;outer.add(m.lab);
  machines.push(m);if(o.col)paint(m,o.col);return m}
-function removeMachine(m){S.remove(m.g);machines=machines.filter(q=>q!==m);if(sel===m)select(null)}
+function removeMachine(m){S.remove(m.g);if(m.op)WKS.splice(WKS.indexOf(m.op),1);machines=machines.filter(q=>q!==m);if(sel===m)select(null)}
 
 // ---------- painting (machine editor) ----------
 function paintables(m){if(m.mats)return m.mats;const list=[],seen=new Map();
@@ -429,12 +433,69 @@ function paintables(m){if(m.mats)return m.mats;const list=[],seen=new Map();
 function paint(m,hex){m.col=hex;const tc=new T.Color(hex);paintables(m).forEach(x=>{const k=Math.min(1.5,Math.max(.55,x.userData.L/m.avg));x.color.setRGB(Math.min(1,tc.r*k),Math.min(1,tc.g*k),Math.min(1,tc.b*k))})}
 function unpaint(m){m.col=null;(m.mats||[]).forEach(x=>x.color.copy(x.userData.base))}
 
-// ---------- moving trolleys on the main aisle ----------
-const GA=[],trolleys=[];
-function syncTrolleys(){const want=Math.min(6,2+machines.filter(m=>m.type==='bay').length);
- while(trolleys.length<want){const k=trolleys.length;let g;if(MODELS.rect_frame_trolley){g=MODELS.rect_frame_trolley.clone();S.add(g)}else{g=batcher(S,{col:[0x1f6fd0,0xf6c21a,0x7f8a78][k%3],fab:[0x1b2a4a,0xb3262e,0xf4efe2,0x15171a][k%4],r:.55});g.scale.setScalar(.8)}g.userData.k=k;trolleys.push(g)}
- while(trolleys.length>want)S.remove(trolleys.pop())}
-GA.push(t=>trolleys.forEach((g,k)=>{const u=((t*.025+k/trolleys.length)%1)*2,p=u<1?u:2-u;g.position.set(-55+p*140,0,-16+(k%2?1.4:-1.4));g.rotation.y=u<1?0:PI}));
+// =====================================================================
+// MOTION RULES (as in Kibrom Plant 3D): one-way trolley loops — equal spacing + equal speed + one direction,
+// so no trolley ever meets another; trolleys move at walking pace (1.2 m/s); the push crew follows the total
+// load (fabric + trolley tare): 1 person up to 300 kg, 2 up to 600 kg, 3 above (the third pulls at the front).
+// =====================================================================
+const GA=[];
+function loopPath(pts){const P=pts.map(p=>new T.Vector3(p[0],0,p[1]));P.push(P[0]);const seg=[];let tot=0;for(let i=0;i<P.length-1;i++){const l=P[i].distanceTo(P[i+1]);seg.push([tot,l,i]);tot+=l}
+ const at=d=>{d=((d%tot)+tot)%tot;for(const[s0,l,i]of seg)if(d<=s0+l+1e-6)return P[i].clone().lerp(P[i+1],(d-s0)/l);return P[0].clone()};
+ const head=d=>{const a=at(d-.8),b=at(d+.8);return Math.atan2(b.x-a.x,b.z-a.z)};return{pts,tot,at,head}}
+const LOOPS={
+ A:Object.assign(loopPath([[-56,-17.2],[86,-17.2],[86,-14.8],[-56,-14.8]]),{name:'Wet-processing loop',kind:'batch',u:'sto',loads:[420,600,300,520,380,560],tare:140,sp:1.2}),
+ B:Object.assign(loopPath([[28.8,-12.5],[28.8,38],[31.2,38],[31.2,-12.5]]),{name:'Printing loop',kind:'batch',u:'prt',loads:[300,450],tare:140,sp:1.2}),
+ C:Object.assign(loopPath([[-21.2,-12.5],[-21.2,38],[-18.8,38],[-18.8,-12.5]]),{name:'Colour-drum loop',kind:'drum',u:'ck',loads:[220,180],tare:60,sp:1.2})};
+const LANES=Object.values(LOOPS).map(L=>{const xs=L.pts.map(q=>q[0]),zs=L.pts.map(q=>q[1]);return[Math.min(...xs)-1.6,Math.max(...xs)+1.6,Math.min(...zs)-1.6,Math.max(...zs)+1.6]});
+// lane markings: yellow edge lines and direction arrows
+{const LM=mat(0xf5c400,{roughness:.6});for(const L of Object.values(LOOPS)){const xs=L.pts.map(q=>q[0]),zs=L.pts.map(q=>q[1]);const x0=Math.min(...xs)-1.1,x1=Math.max(...xs)+1.1,z0=Math.min(...zs)-1.1,z1=Math.max(...zs)+1.1;
+ for(const[a,b,c,d]of[[x0,z0,x1,z0],[x0,z1,x1,z1],[x0,z0,x0,z1],[x1,z0,x1,z1]]){const len=Math.hypot(c-a,d-b);const m=box(a==c?.1:len,.012,a==c?len:.1,LM,0,0,0);m.position.set((a+c)/2,.11,(b+d)/2);m.raycast=()=>{}}
+ for(let d=4;d<L.tot;d+=9){const q=L.at(d),h=L.head(d);const g=grp(q.x,.12,q.z,h);const ar=new T.Mesh(new T.ConeGeometry(.28,.6,3),LM);ar.rotation.x=PI/2;ar.scale.set(1,1,.05);g.add(ar);ar.raycast=()=>{}}}}
+// ---------------- workers (department uniforms, articulated, posed) ----------------
+const UNI={prep:['Preparation',0x0f9d8a],dye:['Dyeing',0x1d4ed8],fin:['Finishing',0x7c3aed],prt:['Printing',0xb91c1c],sto:['Stores & material handling',0x65a30d],ins:['Inspection',0xdb2777],
+ chm:['Chemicals store',0xd97706],ck:['Colour kitchen',0x9a3412],eng:['Screen engraving',0x0891b2],lab:['Laboratory',0xe8eaee],utl:['Utilities',0x475569],etp:['ETP',0x166534],mnt:['Maintenance',0x1e3a5f]};
+const WKS=[];const WMC=new Map();const WM=c=>{if(!WMC.has(c))WMC.set(c,new T.MeshStandardMaterial({color:c,roughness:.78}));return WMC.get(c)};
+const WG={th:new T.BoxGeometry(.16,.45,.17),sh:new T.BoxGeometry(.13,.45,.15),ft:new T.BoxGeometry(.13,.07,.27),pl:new T.BoxGeometry(.38,.15,.22),to:new T.BoxGeometry(.42,.56,.24),
+ ua:new T.BoxGeometry(.115,.30,.12),fa:new T.BoxGeometry(.10,.27,.10),ha:new T.SphereGeometry(.055,8,6),hd:new T.SphereGeometry(.11,14,10),nk:new T.CylinderGeometry(.05,.05,.08,8),
+ hl:new T.SphereGeometry(.128,14,8,0,PI*2,0,PI/2),br:new T.CylinderGeometry(.15,.15,.015,16),bd:new T.BoxGeometry(.43,.045,.25)};
+const SKIN=[0x8d5524,0x6b4423,0xa0673d,0x7a4a2a];
+function wp(geo,m,x,y,z,p){const o=new T.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;o.raycast=()=>{};p.add(o);return o}
+function mkWorker(u){const shirt=UNI[u][1],pant=u==='mnt'?shirt:0x27303d,skin=WM(SKIN[WKS.length%4]),hand=(u==='mnt'||u==='etp')?WM(0x3f3f46):skin,helm=u==='mnt'?0x2563eb:u==='lab'?null:0xfacc15;
+ const root=new T.Group(),hips=new T.Group();hips.position.y=.92;root.add(hips);wp(WG.pl,WM(pant),0,0,0,hips);const lp=[],kn=[],ap=[],el=[];
+ for(const s of[-1,1]){const l=new T.Group();l.position.set(s*.1,-.03,0);hips.add(l);wp(WG.th,WM(pant),0,-.225,0,l);const k=new T.Group();k.position.y=-.45;l.add(k);wp(WG.sh,WM(pant),0,-.225,0,k);wp(WG.ft,WM(0x18181b),0,-.47,.05,k);lp.push(l);kn.push(k)}
+ const torso=new T.Group();torso.position.y=.05;hips.add(torso);wp(WG.to,WM(shirt),0,.29,0,torso);if(u==='mnt'){wp(WG.bd,WM(0xd4ff3a),0,.2,0,torso);wp(WG.bd,WM(0xd4ff3a),0,.4,0,torso)}
+ if(u==='lab')wp(new T.BoxGeometry(.44,.36,.255),WM(0xffffff),0,.04,0,torso);
+ wp(WG.nk,skin,0,.6,0,torso);const head=new T.Group();head.position.y=.72;torso.add(head);wp(WG.hd,skin,0,0,0,head);if(helm!==null){wp(WG.hl,WM(helm),0,.035,0,head);wp(WG.br,WM(helm),0,.035,.02,head)}
+ for(const s of[-1,1]){const a=new T.Group();a.position.set(s*.275,.52,0);torso.add(a);wp(WG.ua,WM(shirt),0,-.15,0,a);const e=new T.Group();e.position.y=-.3;a.add(e);wp(WG.fa,WM(shirt),0,-.135,0,e);wp(WG.ha,hand,0,-.29,0,e);ap.push(a);el.push(e)}
+ const w={root,hips,torso,lp,kn,ap,el,head,u,ph:Math.random()*10};WKS.push(w);return w}
+const POSES={
+ walk(w,t){const f=t*5.6;w.lp[0].rotation.x=.42*Math.sin(f);w.lp[1].rotation.x=-.42*Math.sin(f);w.kn[0].rotation.x=.25+.25*Math.sin(f-1.2);w.kn[1].rotation.x=.25+.25*Math.sin(f+PI-1.2);
+  w.ap[0].rotation.x=-.35*Math.sin(f);w.ap[1].rotation.x=.35*Math.sin(f);w.el[0].rotation.x=w.el[1].rotation.x=-.3;w.hips.position.y=.92+.02*Math.abs(Math.cos(f))},
+ push(w,t){POSES.walk(w,t);w.ap[0].rotation.x=w.ap[1].rotation.x=-1.22;w.el[0].rotation.x=w.el[1].rotation.x=-.32;w.torso.rotation.x=.16},
+ panel(w,t){w.ap[1].rotation.x=-1.0+.12*Math.sin(t*2);w.el[1].rotation.x=-.85+.18*Math.sin(t*4.2);w.ap[0].rotation.x=.05;w.el[0].rotation.x=-.15;w.head.rotation.y=.25*Math.sin(t*.45);w.hips.rotation.y=.05*Math.sin(t*.3)},
+ inspect(w,t){w.ap[0].rotation.x=-.75;w.el[0].rotation.x=-1.25;w.ap[1].rotation.x=-.6;w.el[1].rotation.x=-1.45+.15*Math.sin(t*6);w.head.rotation.x=.35+.08*Math.sin(t*.6);w.head.rotation.y=.3*Math.sin(t*.35)},
+ kneel(w,t){w.hips.position.y=.52;w.lp[0].rotation.x=-1.45;w.kn[0].rotation.x=1.45;w.lp[1].rotation.x=.08;w.kn[1].rotation.x=1.5;w.torso.rotation.x=.3;w.ap[1].rotation.x=-1.1+.28*Math.sin(t*4);w.el[1].rotation.x=-.7;w.ap[0].rotation.x=-.55;w.el[0].rotation.x=-.65},
+ stand(w,t){w.ap[0].rotation.x=.05;w.ap[1].rotation.x=-.05;w.head.rotation.y=.4*Math.sin(t*.25);w.hips.rotation.y=.06*Math.sin(t*.2)}};
+function resetPose(w){for(const o of[w.torso,w.head,w.hips,...w.lp,...w.kn,...w.ap,...w.el])o.rotation.set(0,0,0);w.hips.position.y=.92}
+function spanner(w){if(!w.sp)w.sp=wp(new T.BoxGeometry(.035,.24,.018),WM(0x9ca3af),0,-.4,.03,w.el[1]);return w.sp}
+const UNIFORM={prep:'prep',lab:'lab',dye:'dye',kitchen:'ck',engrave:'eng',rotary:'prt',flat:'prt',finish:'fin',trolley:'sto'};
+function uniformFor(m){return m.type==='boiler'?'utl':m.type==='etp'?'etp':m.type==='qc'?'ins':m.type==='chem'?'chm':UNIFORM[m.def.zone]||'utl'}
+// ---------------- trolleys + push crews on the loops ----------------
+const MOV=new T.Group();S.add(MOV);let movers=[];
+function crewFor(kg){return kg>600?3:kg>300?2:1}
+function loadTag(txt){const s=new T.Sprite(new T.SpriteMaterial({map:spriteTex(txt,'#fde68a','rgba(18,24,32,.85)',256,64,'bold 30px Arial'),transparent:true}));s.scale.set(1.5,.38,1);s.raycast=()=>{};return s}
+function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_drum_trolley':'batching_trolley';
+ if(MODELS[f]){const c=MODELS[f].clone();if(kind!=='drum')c.rotation.y=PI/2;g.add(c)}else{const b=batcher(g,{col:0x1f6fd0,fab:0x1b2a4a,r:.55});b.scale.setScalar(.75);b.rotation.y=PI/2}
+ g.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(g),c=bb.getCenter(new T.Vector3());g.children.forEach(o=>{o.position.x-=c.x;o.position.z-=c.z});g.userData.len=bb.getSize(new T.Vector3()).z;return g}
+function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length;return L===LOOPS.A?Math.min(6,3+bays):L===LOOPS.B?Math.min(4,2+Math.floor(bays/2)):2}
+function syncTrolleys(){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
+ for(const v of movers){MOV.remove(v.tr);v.ws.forEach(w=>{MOV.remove(w.root);WKS.splice(WKS.indexOf(w),1)})}movers=[];
+ for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const load=L.loads[i%L.loads.length],tot=load+L.tare,np=crewFor(tot);
+  const lt=loadTag(tot+' kg · '+np+(np>1?' people':' person'));lt.position.y=2.2;tr.add(lt);
+  const ws=[];for(let j=0;j<np;j++){const w=mkWorker(L.u);MOV.add(w.root);ws.push(w)}movers.push({k,L,tr,ws,np,len:tr.userData.len||2.7,d0:i*L.tot/n,ph:Math.random()*5,tot})}}}
+GA.push((t)=>{for(const v of movers){const{L,tr,ws,np,len}=v,d=v.d0+t*L.sp,p=L.at(d),h=L.head(d);tr.position.copy(p);tr.rotation.y=h;
+ ws.forEach((w,j)=>{const front=j===2,dw=front?d+len/2+.45:d-len/2-.5,q=L.at(dw),hh=L.head(dw),off=front||np===1?0:(j===0?-.36:.36);
+  w.root.position.set(q.x+Math.cos(hh)*off,0,q.z-Math.sin(hh)*off);w.root.rotation.y=hh+(front?PI:0);resetPose(w);POSES[front?'walk':'push'](w,t*L.sp*.95+v.ph+j*.7)})}});
 
 // =====================================================================
 // SIMULATION
@@ -482,7 +543,7 @@ function deliver(id){const o=G.orders.find(q=>q.id===id);if(!o||G.inv[o.type]<o.
 const bar=$('bar');const cur={t:new T.Vector3(15,0,-2),r:190,th:.62,ph:.92},goal={t:cur.t.clone(),r:cur.r,th:cur.th,ph:cur.ph};let viewIdx=0;
 function go(i){viewIdx=i;const v=VIEWS[i];goal.t.set(...v[1]);goal.r=v[2];goal.th=v[3];goal.ph=v[4];[...bar.children].forEach((b,k)=>b.classList.toggle('on',k==i));refreshInfo()}
 VIEWS.forEach((v,i)=>{const b=document.createElement('button');b.textContent=v[0];b.onclick=()=>go(i);bar.appendChild(b)});
-function viewForZone(z){const map={prep:1,lab:2,dye:2,kitchen:3,engrave:4,rotary:5,trolley:6,flat:7,finish:8};return map[z]==null?0:map[z]}
+function viewForZone(z){const map={prep:1,lab:2,dye:2,kitchen:3,engrave:4,rotary:5,trolley:7,flat:8,finish:9};return map[z]==null?0:map[z]}
 const ray=new T.Raycaster(),ndc=new T.Vector2(),floorP=new T.Plane(new T.Vector3(0,1,0),0);
 function setNdc(e){const r=R.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,C)}
 function floorHit(e){setNdc(e);const p=new T.Vector3();return ray.ray.intersectPlane(floorP,p)?p:null}
@@ -579,6 +640,7 @@ function renderTab(){const tc=$('tc');let h='';
  else if(tab==='research'){for(const r of RESEARCH){const done=G.research[r.id],can=!r.req||G.research[r.req];h+=`<div class="card${done?' done':''}">${r.icon} <b>${r.name}</b>${done?' ✅':''}<br><span style="color:var(--mut)">${r.desc}</span>${done?'':`<div class="row"><button data-a="res" data-k="${r.id}" ${can&&G.money>=r.cost?'':'disabled'}>Research ${fmt(r.cost)}</button>${can?'':' <span class="bad">needs '+RESEARCH.find(x=>x.id===r.req).name+'</span>'}</div>`}</div>`}}
  else{let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const busy=machines.filter(m=>!m.def.util&&m.worker).length,need=machines.filter(m=>!m.def.util).length;
   h+=stockHTML()+`<div class="card"><b>Monthly running cost</b><br>Machine upkeep ${fmt(up)}<br>Wages ${G.workers} × $600 = ${fmt(G.workers*600)}<br>Loan interest ${fmt(G.loan*.01)}<br>Total revenue so far <span class="good">${fmt(G.revenue)}</span></div>
+  <div class="card"><b>Floor rules</b><br>• One-way trolley loops: equal spacing, equal speed, one direction — no trolley meets another<br>• Walking pace 1.2 m/s<br>• Push crew by load: ≤300 kg 1 person, ≤600 kg 2, above 3 (third pulls in front)<br>• Machines may not stand on the yellow lanes<br>• Each production machine needs one operator; without one it stops<br>Material handlers on the loops: ${movers.reduce((a,v)=>a+v.np,0)}</div>
   <div class="card"><b>Operators</b> — ${busy} working, ${need} machines need one<div class="row"><button data-a="hire" ${G.money<1500?'disabled':''}>👷 Hire ($1,500)</button><button data-a="fire" ${G.workers<1?'disabled':''}>Dismiss</button></div></div>
   <div class="card"><b>Greige market</b> — ${fmt(G.greige)} per lot<div class="row"><button data-a="buy" data-k="10" ${G.money<G.greige*10?'disabled':''}>Buy 10 lots ${fmt(G.greige*10)}</button><button data-a="buy" data-k="30" ${G.money<G.greige*30?'disabled':''}>Buy 30</button></div></div>
   <div class="card"><b>Spot market</b> (lower than order prices)<div class="row"><button data-a="spot" data-k="fd" ${G.inv.fd<1?'disabled':''}>Sell finished dyed $550/lot</button><button data-a="spot" data-k="fp" ${G.inv.fp<1?'disabled':''}>Sell finished printed $800/lot</button></div></div>
@@ -651,7 +713,7 @@ upgrade();initFX();applyFX();
  if(!load())newGame();$('ld').remove();onResize()})();
 let last=performance.now(),TT=0,uiLast=0;
 (function loop(n){requestAnimationFrame(loop);const rdt=Math.min(.05,(n-last)/1000);last=n;const gdt=G.paused?0:rdt*G.speed;
- if(gdt>0&&machines.length){sim(gdt);TT+=gdt;for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
+ if(gdt>0&&machines.length){sim(gdt);TT+=gdt;for(const m of machines)if(m.op){const w=m.op,pose=m.broken?'kneel':m.running?(m.type==='qc'?'inspect':m.def.util?'stand':'panel'):'stand';w.root.visible=m.def.util||m.worker||m.broken;resetPose(w);if(w.sp)w.sp.visible=pose==='kneel';if(pose==='kneel')spanner(w).visible=true;POSES[pose](w,TT+w.ph)}for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
  if(dragM||sel)syncHL();
  cur.t.lerp(goal.t,.06);for(const k of['r','th','ph'])cur[k]+=(goal[k]-cur[k])*.06;
  C.position.set(cur.t.x+cur.r*Math.sin(cur.ph)*Math.sin(cur.th),cur.t.y+cur.r*Math.cos(cur.ph),cur.t.z+cur.r*Math.sin(cur.ph)*Math.cos(cur.th));C.lookAt(cur.t);
