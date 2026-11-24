@@ -1,785 +1,642 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Textile Tycoon — Processing, Dyeing & Printing</title>
+<meta charset="utf-8">
+<title>Textile Tycoon 3D — Processing, Dyeing &amp; Printing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#0a0e14;color:#e0e8f0;overflow:hidden;height:100vh}
+:root{--panel:rgba(18,24,32,.92);--ink:#f2f4f6;--mut:#aab4c0;--acc:#f2b134;--btn:#2b3644;--line:#2c3947}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#dfe5ea;font-family:"Trebuchet MS",Verdana,sans-serif;overflow:hidden;color:var(--ink)}
 #app{display:flex;height:100vh}
-#sidebar{width:310px;background:#111820;border-right:2px solid #1e2a38;display:flex;flex-direction:column;z-index:10}
-#sidebar-top{padding:12px;background:#0d1218}
-#sidebar h1{font-size:20px;color:#f2b134;margin-bottom:2px;text-shadow:0 0 10px #f2b13444}
-#sidebar .tagline{font-size:11px;color:#5a7a94}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
-.stat-box{background:#0a1018;border:1px solid #1a2634;border-radius:6px;padding:5px 7px}
-.stat-label{font-size:9px;color:#5a7a94;text-transform:uppercase;letter-spacing:.5px}
-.stat-val{font-size:14px;font-weight:700}
-.money{color:#4ade80}.rating{color:#f2b134}
-#tabs{display:flex;background:#0d1218;border-bottom:1px solid #1e2a38}
-.tab{flex:1;padding:7px 4px;text-align:center;font-size:11px;color:#5a7a94;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
-.tab:hover{color:#a0b8cc}.tab.active{color:#f2b134;border-bottom-color:#f2b134}
-#tab-content{flex:1;overflow-y:auto;padding:8px}
-#tab-content::-webkit-scrollbar{width:5px}
-#tab-content::-webkit-scrollbar-thumb{background:#1e2a38;border-radius:3px}
-.cat{margin-bottom:10px}
-.cat-title{font-size:10px;color:#5a7a94;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;padding:0 4px}
-.item-btn{display:flex;align-items:center;gap:8px;width:100%;padding:7px;border:1px solid #1a2634;border-radius:6px;background:#0f1820;color:#c0d0e0;cursor:pointer;font-size:12px;margin-bottom:3px;transition:.15s;text-align:left}
-.item-btn:hover{background:#162030;border-color:#2a3e54}
-.item-btn.active{background:#1a2a18;border-color:#4ade80;color:#4ade80}
-.item-btn.locked{opacity:.4;cursor:not-allowed}
-.item-btn .ic{font-size:18px;width:26px;text-align:center}
-.item-btn .inf{flex:1}
-.item-btn .nm{font-weight:600;font-size:11px}
-.item-btn .det{font-size:10px;color:#5a7a94}
-.order-card{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:8px;margin-bottom:5px;font-size:12px}
-.order-card b{color:#f2b134}
-.order-card .fulfill-btn{padding:4px 10px;border:1px solid #2a3e54;border-radius:4px;background:#162030;color:#e0e8f0;cursor:pointer;font-size:11px;margin-top:4px}
-.order-card .fulfill-btn:hover{background:#1e3040}
-.order-card .fulfill-btn:disabled{opacity:.4;cursor:not-allowed}
-.r-item{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:7px;margin-bottom:5px}
-.r-item.done{border-color:#4ade80}
-.r-item .rn{font-size:12px;font-weight:600}.r-item .rd{font-size:10px;color:#5a7a94;margin:2px 0}
-.r-item .rc{font-size:11px;color:#f2b134}
-.r-btn{padding:4px 10px;border:1px solid #2a3e54;border-radius:4px;background:#162030;color:#e0e8f0;cursor:pointer;font-size:11px;margin-top:3px}
-.r-btn:hover{background:#1e3040}.r-btn:disabled{opacity:.4;cursor:not-allowed}
-.info-panel{background:#0f1820;border:1px solid #1a2634;border-radius:6px;padding:8px;margin-bottom:5px;font-size:12px;line-height:1.7}
-.info-panel b{color:#f2b134}
-.bar-row{display:flex;align-items:center;gap:4px;font-size:10px;margin:2px 0}
-.bar-row span:first-child{width:70px;color:#5a7a94}
-.bar-bg{flex:1;height:6px;background:#0a1018;border-radius:3px}.bar-fill{height:100%;border-radius:3px;transition:width .3s}
-.bar-row .bv{width:30px;text-align:right}
-#main{flex:1;position:relative;background:#1a2218}
-canvas{display:block}
-#hud{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:5;flex-wrap:wrap}
-.hud-btn{padding:5px 12px;background:#111820dd;border:1px solid #1e2a38;border-radius:6px;color:#c0d0e0;cursor:pointer;font-size:12px;backdrop-filter:blur(4px)}
-.hud-btn:hover{background:#1a2838dd}.hud-btn.active{border-color:#f2b134;color:#f2b134}
-#speed-display{position:absolute;top:10px;right:10px;padding:5px 12px;background:#111820dd;border:1px solid #1e2a38;border-radius:6px;color:#f2b134;font-size:12px;backdrop-filter:blur(4px);z-index:5}
-#msg{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);padding:8px 20px;background:#111820ee;border:1px solid #1e2a38;border-radius:8px;color:#e0e8f0;font-size:13px;backdrop-filter:blur(4px);z-index:5;pointer-events:none;opacity:0;transition:opacity .3s}
+button{background:var(--btn);color:var(--ink);border:0;border-radius:6px;padding:7px 11px;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+button:hover{filter:brightness(1.18)}button:disabled{opacity:.4;cursor:not-allowed;filter:none}
+button.on{background:var(--acc);color:#1b1b1b}
+/* sidebar */
+#side{width:310px;flex:none;background:#151d26;border-right:2px solid var(--line);display:flex;flex-direction:column;z-index:6}
+#top{padding:10px 12px;background:#10161d}
+#top h1{margin:0;font-size:19px;color:var(--acc)}#top .tg{font-size:11px;color:var(--mut)}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+.sb{background:#0c1117;border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.sl{font-size:9px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}.sv{font-size:14px;font-weight:bold}
+#tabs{display:flex;background:#10161d;border-bottom:1px solid var(--line)}
+.tab{flex:1;padding:8px 2px;text-align:center;font-size:11px;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent}
+.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+#tc{flex:1;overflow-y:auto;padding:8px}
+#tc::-webkit-scrollbar{width:5px}#tc::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.ct{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em;margin:10px 4px 4px;display:flex;align-items:center;gap:6px}
+.ct i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.ib{display:flex;gap:8px;align-items:center;width:100%;text-align:left;background:#1b2530;border:1px solid var(--line);margin-bottom:4px;padding:6px 8px}
+.ib.on{border-color:#4ade80;background:#1a2a20}.ib .ic{font-size:18px;width:24px;text-align:center}
+.ib .nm{font-weight:bold;font-size:11.5px}.ib .dt{font-size:10px;color:var(--mut);white-space:normal}
+.card{background:#1b2530;border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:6px;font-size:12px;line-height:1.55}
+.card b{color:var(--acc)}.card.done{border-color:#4ade80}
+.stock{font-size:11px;line-height:1.6;color:var(--mut)}.stock b{color:var(--ink)}
+.row{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.good{color:#4ade80}.bad{color:#ff7b7b}
+/* main 3D view */
+#main{flex:1;position:relative;overflow:hidden}
+#main canvas{display:block;width:100%;height:100%;touch-action:none}
+#bar{position:absolute;top:8px;left:8px;right:8px;display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;z-index:3}
+#info{position:absolute;left:8px;bottom:8px;max-width:min(440px,calc(100% - 110px));background:var(--panel);padding:11px 13px;border-radius:8px;font-size:12.5px;line-height:1.5;z-index:3}
+#info h2{margin:0 0 3px;font-size:15px;color:var(--acc)}#info p{margin:0}#st{margin-top:5px;color:var(--acc);font-size:12px;min-height:1em}#info small{color:var(--mut)}
+#z{position:absolute;right:8px;bottom:8px;display:flex;flex-direction:column;gap:6px;z-index:3}
+#z button{width:42px;height:38px;padding:0;font-size:14px}
+#pe{position:absolute;top:50px;right:8px;width:min(280px,calc(100% - 16px));max-height:calc(100% - 160px);overflow:auto;background:var(--panel);border-radius:8px;font-size:12px;z-index:4;box-shadow:0 4px 18px rgba(0,0,0,.35);display:none}
+#pe h3{margin:0;padding:9px 10px;font-size:14px;color:var(--acc);display:flex;gap:6px;align-items:center;position:sticky;top:0;background:var(--panel)}
+#pe h3 input{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px dashed #667;color:var(--acc);font:inherit;font-weight:bold}
+#pe .b{padding:0 10px 10px}#pe label{display:flex;align-items:center;gap:5px;margin:4px 0}
+#pe label span{width:62px;color:var(--mut);flex:none}
+#pe input[type=number]{width:0;flex:1;background:#1b232d;color:var(--ink);border:1px solid #3a4756;border-radius:4px;padding:4px;font:inherit}
+#pe .sec{color:var(--mut);margin-top:9px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em}
+#pe .dim{color:var(--mut);margin:3px 0}
+#pe .sw{width:22px;height:22px;border-radius:4px;padding:0;border:2px solid #0006}
+#pe input[type=color]{width:34px;height:24px;padding:0;border:0;background:none}
+#msg{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:var(--panel);padding:8px 18px;border-radius:8px;font-size:13px;z-index:5;pointer-events:none;opacity:0;transition:opacity .3s;max-width:60%;text-align:center}
 #msg.show{opacity:1}
-#tooltip{position:absolute;display:none;background:#0d1218ee;border:1px solid #1e2a38;border-radius:6px;padding:8px 12px;font-size:11px;color:#e0e8f0;pointer-events:none;z-index:20;backdrop-filter:blur(4px);max-width:240px;line-height:1.5}
+#ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#dfe5ea;color:#2b3644;font-size:15px;z-index:9}
 </style>
 </head>
 <body>
 <div id="app">
-<div id="sidebar">
-  <div id="sidebar-top">
-    <h1>🏭 Textile Tycoon</h1>
-    <div class="tagline">Processing · Dyeing · Printing</div>
-    <div class="stats-grid">
-      <div class="stat-box"><div class="stat-label">Cash</div><div class="stat-val money" id="s-money">$50,000</div></div>
-      <div class="stat-box"><div class="stat-label">Workers</div><div class="stat-val" id="s-workers">3</div></div>
-      <div class="stat-box"><div class="stat-label">Reputation</div><div class="stat-val rating" id="s-rep">50</div></div>
-      <div class="stat-box"><div class="stat-label">Month</div><div class="stat-val" id="s-month">Jan Y1</div></div>
+<aside id="side">
+  <div id="top">
+    <h1>🏭 Textile Tycoon 3D</h1>
+    <div class="tg">Processing · Dyeing · Printing · Finishing</div>
+    <div class="sg">
+      <div class="sb"><div class="sl">Cash</div><div class="sv" id="sCash"></div></div>
+      <div class="sb"><div class="sl">Operators</div><div class="sv" id="sWk"></div></div>
+      <div class="sb"><div class="sl">Reputation</div><div class="sv" id="sRep" style="color:var(--acc)"></div></div>
+      <div class="sb"><div class="sl">Month</div><div class="sv" id="sMon"></div></div>
     </div>
   </div>
   <div id="tabs">
-    <div class="tab active" data-tab="build">Build</div>
-    <div class="tab" data-tab="orders">Orders</div>
-    <div class="tab" data-tab="research">Research</div>
-    <div class="tab" data-tab="finance">Finance</div>
+    <div class="tab on" data-t="build">Build</div><div class="tab" data-t="orders">Orders</div>
+    <div class="tab" data-t="research">Research</div><div class="tab" data-t="finance">Finance</div>
   </div>
-  <div id="tab-content"></div>
-</div>
-<div id="main">
-  <canvas id="game"></canvas>
-  <div id="hud">
-    <div class="hud-btn" id="btn-pause">⏸ Pause</div>
-    <div class="hud-btn" id="btn-speed">▶▶ Fast</div>
-    <div class="hud-btn" id="btn-demolish">💥 Demolish</div>
-    <div class="hud-btn" id="btn-buy-greige">🧺 Buy Greige Fabric ($500)</div>
-    <div class="hud-btn" id="btn-hire">👷 Hire Worker ($1,200)</div>
+  <div id="tc"></div>
+</aside>
+<main id="main">
+  <div id="ld">Building plant…</div>
+  <div id="bar"></div>
+  <div id="info"><h2></h2><p></p><div id="st"></div><small>Drag to orbit · right-drag or shift-drag to pan · scroll to zoom · click a machine to edit it</small></div>
+  <div id="z">
+    <button id="zi" title="Zoom in">+</button><button id="zo" title="Zoom out">−</button>
+    <button id="spd" title="Game speed">1×</button><button id="pp" title="Pause">❚❚</button>
+    <button id="lbl" title="Machine labels">🏷</button><button id="fx" title="High quality rendering">HQ</button>
   </div>
-  <div id="speed-display">▶ Normal</div>
+  <div id="pe"></div>
   <div id="msg"></div>
-  <div id="tooltip"></div>
+</main>
 </div>
-</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 <script>
-// =====================================================
-// TEXTILE TYCOON — Processing, Dyeing & Printing
-// Machines based on real textile factory layouts
-// =====================================================
-const C=document.getElementById('game'),ctx=C.getContext('2d');
-const COLS=52,ROWS=52,ISO_W=44,ISO_H=22,HW=ISO_W/2,HH=ISO_H/2;
+// =====================================================================
+// TEXTILE TYCOON 3D — built on the Integrated Textile Plant 3D layout
+// =====================================================================
+const T=THREE,PI=Math.PI,$=id=>document.getElementById(id);
+const main=$('main');const VW=()=>main.clientWidth,VH=()=>main.clientHeight;
+const R=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+const DPR=Math.min(devicePixelRatio,1.5);R.setPixelRatio(DPR);R.setSize(VW(),VH());
+R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;R.toneMapping=T.ACESFilmicToneMapping;R.outputEncoding=T.sRGBEncoding;
+main.prepend(R.domElement);
+const S=new T.Scene(),BGC=0xdfe5ea;S.background=new T.Color(BGC);S.fog=new T.Fog(BGC,420,900);
+const C=new T.PerspectiveCamera(32,VW()/VH(),3,600);
+// ---------- lighting ----------
+S.add(new T.HemisphereLight(0xf4f8ff,0xa59c90,.28));
+const sun=new T.DirectionalLight(0xfff4e6,.85);sun.position.set(-40,90,60);sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);
+Object.assign(sun.shadow.camera,{left:-90,right:90,top:70,bottom:-70,near:10,far:260});sun.shadow.bias=-.0012;sun.shadow.normalBias=.12;S.add(sun);
+const fill=new T.DirectionalLight(0xcfe0ff,.25);fill.position.set(60,40,-40);S.add(fill);
+// ---------- textures ----------
+const mk=(w,h,fn,rep)=>{const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=8;if(rep)t.repeat.set(rep[0],rep[1]);return t};
+const brushed=mk(256,256,(g,w,h)=>{g.fillStyle='#808080';g.fillRect(0,0,w,h);for(let i=0;i<2600;i++){const v=90+Math.random()*100|0;g.strokeStyle=`rgba(${v},${v},${v},.4)`;g.beginPath();const y=Math.random()*h;g.moveTo(0,y);g.lineTo(w,y+(Math.random()-.5)*2);g.stroke()}});
+const concrete=mk(512,512,(g,w,h)=>{g.fillStyle='#d6d8da';g.fillRect(0,0,w,h);const d=g.getImageData(0,0,w,h);for(let i=0;i<d.data.length;i+=4){const n=(Math.random()-.5)*16;d.data[i]+=n;d.data[i+1]+=n;d.data[i+2]+=n}g.putImageData(d,0,0);
+ for(let i=0;i<60;i++){g.fillStyle=`rgba(120,125,130,${Math.random()*.08})`;g.beginPath();g.ellipse(Math.random()*w,Math.random()*h,20+Math.random()*60,10+Math.random()*30,Math.random()*3,0,7);g.fill()}
+ g.strokeStyle='rgba(70,76,82,.55)';g.lineWidth=3;g.strokeRect(0,0,w,h)});
+const weave=mk(64,64,(g,w,h)=>{g.fillStyle='#888';g.fillRect(0,0,w,h);for(let y=0;y<h;y+=4)for(let x=0;x<w;x+=4){g.fillStyle=((x+y)/4%2)?'#aaa':'#666';g.fillRect(x,y,4,4)}});
+function ftex(kind,col){const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');g.fillStyle=kind=='grey'?'#e6e0cf':col||'#fff';g.fillRect(0,0,256,64);
+ if(kind=='print'){const cs=['#d6336c','#f2b134','#1c7ed6','#2f9e44','#fff','#7048e8'];for(let i=0;i<16;i++){g.fillStyle=cs[i%6];g.beginPath();g.ellipse(8+i*16,16+(i*23)%36,9,6,i,0,7);g.fill();g.fillStyle=cs[(i+2)%6];g.beginPath();g.arc(i*16+5,(i*31)%56+4,4,0,7);g.fill()}}
+ else{g.strokeStyle='rgba(0,0,0,.09)';for(let i=0;i<256;i+=3){g.beginPath();g.moveTo(i,0);g.lineTo(i,64);g.stroke()}}
+ const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.RepeatWrapping;t.anisotropy=4;return t}
+// ---------- materials ----------
+const mat=(c,o)=>new T.MeshStandardMaterial(Object.assign({color:c,roughness:.5,metalness:.1},o||{}));
+const ST=mat(0xd2d6db,{metalness:1,roughness:.3}),STd=mat(0x9aa0a6,{metalness:1,roughness:.38}),DK=mat(0x1f2328,{roughness:.65}),BL=mat(0x2162ae,{roughness:.4}),
+GR=mat(0x8d949b,{roughness:.45,metalness:.5}),WH=mat(0xf1f3f5,{roughness:.38}),CR=mat(0xe4ddcc,{roughness:.55}),YL=mat(0xf6c21a,{roughness:.45}),RD=mat(0xc8232c,{roughness:.4}),
+GN=mat(0x3f8040,{roughness:.55}),OR=mat(0xe8590c,{roughness:.45}),NV=mat(0x2d3b4e,{roughness:.4,metalness:.3}),
+GL=mat(0x9fc4d9,{transparent:true,opacity:.28,roughness:.05,metalness:.2}),DRUM=mat(0x1b4fb8,{roughness:.32}),NI=mat(0xd9d6c8,{metalness:1,roughness:.3});
+const GRN=mat(0x3f7d3f,{roughness:.5}),RDT=mat(0xb8504a,{roughness:.35,transparent:true,opacity:.85}),BEI=mat(0xcfc59a,{roughness:.6}),BLP=mat(0x2f5f9e,{roughness:.4});
+const SC=c=>mat(c,{emissive:c,emissiveIntensity:1,roughness:.4});
+const cols=[0xd6336c,0xf2b134,0x1c7ed6,0x2f9e44,0x7048e8,0xe8590c,0x15aabf,0x495057];
+const JC=[0xd9a0a8,0xd9a0a8,0xd9a0a8,0xd9a441],TC=[0xf97316,0x6366f1,0xef4444,0xeab308,0x14b8a6];
+const sm=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)};
+// ---------- geometry helpers ----------
+const BGE={};const bgeo=(w,h,d)=>{const k=w.toFixed(3)+'|'+h.toFixed(3)+'|'+d.toFixed(3);return BGE[k]||(BGE[k]=new T.BoxGeometry(w,h,d))};
+function grp(x,y,z,ry,p){const g=new T.Group();g.position.set(x,y,z);g.rotation.y=ry||0;(p||S).add(g);return g}
+function box(w,h,d,m,x,y,z,p){const o=new T.Mesh(bgeo(w,h,d),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;(p||S).add(o);return o}
+function cyl(r,h,m,x,y,z,ax,p,seg,r2){const o=new T.Mesh(new T.CylinderGeometry(r,r2==null?r:r2,h,seg||32),m);o.position.set(x,y,z);if(ax=='x')o.rotation.z=PI/2;if(ax=='z')o.rotation.x=PI/2;o.castShadow=o.receiveShadow=true;(p||S).add(o);return o}
+function sph(r,m,x,y,z,sx,sy,sz,p){const o=new T.Mesh(new T.SphereGeometry(r,24,16),m);o.position.set(x,y,z);o.scale.set(sx||1,sy||1,sz||1);o.castShadow=true;(p||S).add(o);return o}
+function lathe(pts,m,x,y,z,p){const o=new T.Mesh(new T.LatheGeometry(pts.map(a=>new T.Vector2(a[0],a[1])),40),m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;(p||S).add(o);return o}
+function vessel(r,len,m,x,y,z,p){const pts=[],d=.42*r;for(let i=0;i<=10;i++){const a=i/10*PI/2;pts.push([r*Math.sin(a),-len/2-d*Math.cos(a)])}for(let i=10;i>=0;i--){const a=i/10*PI/2;pts.push([r*Math.sin(a),len/2+d*Math.cos(a)])}const o=lathe(pts,m,x,y,z,p);o.rotation.z=PI/2;return o}
+function ctank(r,h,m,x,y,z,p){return lathe([[.001,-.45*r],[.2*r,-.55*r],[r,0],[r,h],[.96*r,h+.05],[.001,h+.05]],m,x,y,z,p)}
+function tube(pts,m,r,p){const cp=new T.CurvePath();for(let i=0;i<pts.length-1;i++)cp.add(new T.LineCurve3(new T.Vector3(...pts[i]),new T.Vector3(...pts[i+1])));const o=new T.Mesh(new T.TubeGeometry(cp,pts.length*6,r,10),m);o.castShadow=true;(p||S).add(o);return cp}
+function scr(w,h,x,y,z,c,p){return box(w,h,.05,SC(c),x,y,z,p)}
+function fabIn(A,ax,ay,bx,by,z,w,kind,col,sp,p){const L=Math.hypot(bx-ax,by-ay),g=grp((ax+bx)/2,(ay+by)/2,z,0,p);g.rotation.z=Math.atan2(by-ay,bx-ax);const t=ftex(kind,col);t.repeat.set(L/6,1);const m=new T.Mesh(new T.PlaneGeometry(L,w),new T.MeshStandardMaterial({map:t,side:2,roughness:.9,bumpMap:weave,bumpScale:.25}));m.rotation.x=-PI/2;m.receiveShadow=true;g.add(m);A.push((tt,dt)=>{t.offset.x-=sp*dt/6});return g}
+function belt(A,len,w,x,y,z,col,sp,p){const t=ftex('dyed',col);t.repeat.set(len/6,1);const m=new T.Mesh(new T.PlaneGeometry(len,w),new T.MeshStandardMaterial({map:t,roughness:.9,bumpMap:weave,bumpScale:.25}));m.rotation.x=-PI/2;m.position.set(x,y,z);m.receiveShadow=true;p.add(m);A.push((tt,dt)=>{t.offset.x-=sp*dt/6});return m}
+function roll(r,len,x,y,z,col,p){const g=grp(x,y,z,0,p);cyl(r,len,mat(col||0xf5f0e4,{roughness:.95,bumpMap:weave,bumpScale:.5}),0,0,0,'z',g,40);cyl(r*.3,len+.15,STd,0,0,0,'z',g,16);return g}
+function strut(p1,p2,th,m,p){const a=new T.Vector3(...p1),b=new T.Vector3(...p2),d=b.clone().sub(a),L=d.length();const o=new T.Mesh(bgeo(th,th,L),m);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new T.Vector3(0,0,1),d.normalize());o.castShadow=o.receiveShadow=true;p.add(o);return o}
+function spriteTex(t,col,bg,w,h,font){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle=bg;g.fillRect(0,0,w,h);g.fillStyle=col;g.font=font;g.textAlign='center';g.fillText(t,w/2,h*.67);return new T.CanvasTexture(c)}
+function tag(t,x,y,z,col){const s=new T.Sprite(new T.SpriteMaterial({map:spriteTex(t,col||'#f2b134','rgba(18,24,32,.9)',420,72,'bold 30px Trebuchet MS'),depthTest:false,transparent:true}));s.scale.set(11.5,1.97,1);s.position.set(x,y,z);s.renderOrder=9;s.raycast=()=>{};S.add(s);return s}
 
-// ---- GAME STATE ----
-let G={
-  grid:[],buildings:[],money:50000,workers:3,month:0,day:0,tick:0,speed:1,
-  reputation:50,totalRevenue:0,research:{},tool:null,demolish:false,
-  cameraX:0,cameraY:0,zoom:0.8,dragStart:null,dragCam:null,hover:null,
-  msgTimer:0,buildId:0,
-  // Inventory
-  inv:{greige:30,scoured:0,bleached:0,mercerized:0,dyed:0,printed:0,finished:0,
-       dye_paste:0,print_paste:0,screens:0},
-  orders:[],nextOrderId:1,
-  // Market prices fluctuate
-  greige_price:50,finished_price:0,
-  loan:0,maxLoan:80000,
-  weather:'normal',
-};
+// =====================================================================
+// MACHINE MODELS (ported from the plant layout)
+// =====================================================================
+function cart(p,x,z,ry,c){const g=grp(x,0,z,ry,p);box(1.3,.08,1.3,BLP,0,.3,0,g);box(1.1,1,1.1,BEI,0,.88,0,g);box(.4,.12,.03,mat(c),0,1,.58,g);for(const a of[-.6,.6])box(.07,1.4,.07,BLP,a,1,-.6,g);box(1.2,.07,.07,BLP,0,1.7,-.6,g);for(const[a,b]of[[-.55,-.55],[.55,-.55],[-.55,.55],[.55,.55]])cyl(.1,.09,DK,a,.14,b,'z',g,16);return g}
+// green-frame dispensing / weighing station with moving gantry
+function station(g,A){const idx=(Math.random()*5)|0;
+ for(const sx of[-1.5,1.5])for(const sz of[-.9,.9])box(.1,2.2,.1,GRN,sx,1.1,sz,g);
+ for(const y of[2.15,.55]){for(const sz of[-.9,.9])box(3.1,.08,.08,GRN,0,y,sz,g);for(const sx of[-1.5,1.5])box(.08,.08,1.8,GRN,sx,y,0,g)}
+ box(3.2,.07,2,RDT,0,2.24,0,g);box(1.2,1.2,1.2,BEI,-.7,.95,0,g);box(.4,.12,.03,mat(TC[idx]),-.7,1.1,.61,g);
+ for(const[a,b]of[[-1.2,-.5],[-.2,-.5],[-1.2,.5],[-.2,.5]])cyl(.09,.09,DK,a,.2,b,'z',g,16);cart(g,1,1.6,0,TC[(idx+2)%5]);
+ for(const sx of[-1.5,1.5])box(.1,1.8,.1,GRN,sx,3.1,-.6,g);box(3.2,.12,.12,GRN,0,4,-.6,g);box(3.2,.12,.12,GRN,0,3.7,-.6,g);
+ const car=grp(0,4,-.6,0,g);box(.5,.4,.45,GRN,0,0,0,car);const arm=box(.08,1.5,.08,DK,0,-.9,0,car);const gr=box(.4,.08,.22,DK,0,-1.7,0,car);
+ [[-1,-.6],[-.1,.4],[.9,-.2],[1.1,.55]].forEach((q,i)=>{const j=grp(q[0],2.58,q[1],0,g);cyl(.28,.6,mat(JC[i],{transparent:true,opacity:.78,roughness:.1}),0,0,0,'y',j);cyl(.29,.09,OR,0,.33,0,'y',j)});
+ A.push(t=>{const ph=(t%10)/10;car.position.x=1.3*Math.cos(ph*2*PI);const a=Math.max(0,Math.sin(ph*6*PI));arm.position.y=-.9-a*.5;gr.position.y=-1.7-a*.5;A.status=a>.2?'Gripper weighing a dye jar':'Gantry moving to next jar'})}
+// stainless tanks on a coloured frame platform with stirrers
+function platform(g,A,n,col){const w=n*2.6+1,fm=mat(col,{roughness:.45});
+ for(const sx of[-w/2,w/2])for(const sz of[-1.8,1.8])box(.16,3.4,.16,fm,sx,1.7,sz,g);box(w,.16,.16,fm,0,3.4,1.8,g);box(w,.16,.16,fm,0,3.4,-1.8,g);box(.16,.16,3.6,fm,-w/2,3.4,0,g);box(.16,.16,3.6,fm,w/2,3.4,0,g);
+ const st=[];for(let i=0;i<n;i++){const px=-w/2+1.5+i*2.6;ctank(1.1,1.6,ST,px,3.9,0,g);cyl(1.1,.14,GN,px,5.55,0,'y',g,32);cyl(.35,.3,STd,px,5.7,0,'y',g,16);cyl(.07,1,STd,px,2.7,.8,'y',g,10);st.push(box(.7,.06,.08,ST,px,5.92,0,g))}
+ for(const sx of[-w/2,w/2])box(.06,1,.06,fm,sx,4,1.8,g);box(w,.05,.05,fm,0,4.5,1.8,g);box(w,.05,.05,fm,0,4.5,-1.8,g);
+ A.push((t,dt)=>st.forEach(s=>s.rotation.y+=dt*5))}
+// HT jet dyeing machine
+function jet(g,A){vessel(1.35,5.2,ST,0,2.1,0,g);box(.45,.9,2.2,GR,-2,.45,0,g);box(.45,.9,2.2,GR,2,.45,0,g);const win=[];
+ for(let k=0;k<3;k++){const px=-1.3+k*1.3;cyl(.22,1.3,ST,px,4.1,-.1,'y',g);sph(.3,ST,px,4.8,-.1,1,1,1,g);cyl(.18,.8,ST,px+.3,5.1,-.1,'x',g);sph(.62,DK,px+.55,5.15,-.1,.9,.2,.6,g);
+  const t=new T.Mesh(new T.TorusGeometry(.3,.08,12,28),ST);t.position.set(px,2.1,1.35);g.add(t);cyl(.26,.05,GL,px,2.1,1.34,'z',g);win.push(cyl(.2,.03,mat(0x1c7ed6,{emissive:0x1c7ed6,emissiveIntensity:.4}),px,2.1,1.33,'z',g))}
+ box(.9,2,.8,ST,-3.5,1,1.4,g);const sc=scr(.5,.35,-3.5,1.6,1.82,0x38bdf8,g);const lamp=box(.1,.1,.06,SC(0x22c55e),-3.5,2.2,1.82,g);
+ cyl(.75,5.4,ST,-4.8,2.7,-1.5,'y',g);cyl(.5,1.8,ST,-5,.9,1.5,'y',g);box(3.5,.08,1.4,DK,.5,.06,2.8,g);
+ A.push(t=>{lamp.visible=Math.sin(t*3)>-.3;win.forEach((w,i)=>w.material.emissiveIntensity=.3+.3*Math.sin(t*4+i));const ph=t%24;A.status='HT dyeing cycle: '+(ph<4?'filling & heating':ph<16?'dyeing at 130 °C ('+Math.round(60+ph*4.4)+' °C)':ph<20?'cooling & rinsing':'unloading')})}
+// preparatory continuous range (desizing / scouring / bleaching)
+function prepRange(g,A,o){const L=o.L,n=o.n,cells=n+(o.jbox?1:0),step=L/cells;box(L,.3,3.8,GR,0,.15,0,g);const rl=[];
+ for(let i=0;i<cells;i++){const px=-L/2+step*(i+.5);
+  if(o.jbox&&i===1){cyl(1.3,3.6,ST,px,2.1,0,'y',g,32);sph(1.3,ST,px,3.9,0,1,.4,1,g);cyl(.18,1.2,STd,px+.9,4.2,0,'y',g,12);box(.4,.4,.05,SC(0xf97316),px,1.6,1.32,g);continue}
+  box(step-.5,2.3,3.2,o.acc,px,1.45,0,g);box(step-.4,.16,3.3,ST,px,2.68,0,g);box((step-.5)*.6,.9,.05,GL,px,1.6,1.62,g);
+  rl.push(cyl(.24,3.4,NI,px-step*.25,3,0,'z',g,20),cyl(.24,3.4,NI,px+step*.25,3,0,'z',g,20));cyl(.08,1.6,STd,px,3.6,-1.3,'y',g,8)}
+ fabIn(A,-L/2,3.25,L/2,3.25,0,2.6,o.kind,o.col,1.6,g);roll(.8,3,-L/2-1.6,1.3,0,o.inCol,g);fabIn(A,-L/2-1.6,2.1,-L/2,3.25,0,2.6,'grey',null,1.6,g);
+ const pl=grp(L/2+1.4,0,0,0,g);box(2,1.6,3,GR,0,.8,0,pl);const st=box(1.6,.6,2.4,mat(o.outCol,{roughness:.9}),0,1.9,0,pl);fabIn(A,L/2,3.25,L/2+1.4,2.4,0,2.6,o.kind,o.col,1.6,g);
+ const cab=grp(-L/4,0,-2.6,0,g);box(3,2.2,.8,CR,0,1.1,0,cab);scr(.6,.4,0,1.5,.42,0x38bdf8,cab);
+ A.push((t,dt)=>{rl.forEach(r=>r.rotation.y+=dt*3);const h=.4+(t%30)/30*1.2;st.scale.y=h;st.position.y=1.6+h*.3})}
+// colour kitchen: tank platform + drum conveyor + dispenser
+function kitchen(g,A){const p=grp(-2,0,0,0,g);platform(p,A,3,0x2f6fb5);
+ const c=grp(0,0,3.6,0,g);box(7,.12,1.4,GR,0,.5,0,c);for(let i=0;i<22;i++)cyl(.06,1.3,STd,-3.3+i*.3,.62,0,'z',c,10);const bins=[];for(let i=0;i<4;i++)bins.push(cyl(.45,1.1,DRUM,0,1.2,0,'y',c,24));
+ const d=grp(5.6,0,0,0,g);box(2.6,4,2.6,mat(0xcfd3d8,{metalness:.8,roughness:.4}),0,2,0,d);box(1.6,1.6,.08,GL,0,2.5,1.34,d);scr(.7,.5,0,1.1,1.34,0x38bdf8,d);box(2.6,.3,2.8,BL,0,4.1,0,d);
+ A.push(t=>{bins.forEach((b,i)=>b.position.x=-3.2+((t*.45+i*1.7)%6.6));A.status='Mixing print paste · drums moving to the print lines'})}
+function autoKitchen(g,A){const cab=grp(0,0,0,0,g);box(3.4,4.2,3,mat(0xcfd3d8,{metalness:.8,roughness:.4}),0,2.1,0,cab);box(2,1.6,.08,GL,0,2.6,1.54,cab);scr(.8,.55,1.1,1.3,1.54,0x38bdf8,cab);box(3.4,.3,3.2,BL,0,4.35,0,cab);
+ const car=grp(0,4.5,0,0,cab);for(let i=0;i<16;i++){const a=i/16*2*PI;cyl(.16,.7,mat(cols[i%8],{roughness:.3}),Math.cos(a)*1.2,.35,Math.sin(a)*1.2,'y',car,14)}
+ const c=grp(0,0,3.2,0,g);box(8,.12,1.4,GR,0,.5,0,c);for(let i=0;i<26;i++)cyl(.06,1.3,STd,-3.8+i*.3,.62,0,'z',c,10);const bins=[];for(let i=0;i<5;i++)bins.push(cyl(.45,1.1,DRUM,0,1.2,0,'y',c,24));
+ const stir=[];for(let i=0;i<3;i++){const s=grp(-5.2,0,-1.6+i*1.6,0,g);cyl(.7,1.4,ST,0,1.3,0,'y',s,28);cyl(.5,1,STd,0,2.3,0,'y',s,24,.1);stir.push(box(.8,.05,.05,ST,0,2.9,0,s))}
+ A.push((t,dt)=>{car.rotation.y+=dt*.6;stir.forEach(s=>s.rotation.y+=dt*6);bins.forEach((b,i)=>b.position.x=-3.7+((t*.6+i*1.6)%7.6));A.status='Auto-dispensing recipe from stored formula'})}
+// screen engraving
+function engraver(g,A){box(7,1.4,2.4,WH,0,.8,0,g);box(7.1,.7,2.5,mat(0xd23a44,{roughness:.3}),0,1.9,0,g);box(1.2,.3,.06,mat(0x23272c),0,.9,1.25,g);const lamp=box(.5,.4,.05,SC(0x38bdf8),-2.6,1.9,1.28,g);
+ cyl(.5,6,STd,0,2.8,0,'x',g);const hd=box(.6,.5,.7,mat(0xe03131,{emissive:0xe03131,emissiveIntensity:.5}),0,3.6,0,g);cyl(.06,6,NI,0,3.4,0,'x',g,8);for(const sx of[-3.2,3.2])cyl(.2,.2,DK,sx,.2,1,'z',g,16);
+ A.push(t=>{hd.position.x=Math.sin(t*.9)*2.6;lamp.material.emissiveIntensity=.8+.5*Math.sin(t*3);A.status='Laser exposing screen · head at '+Math.round((Math.sin(t*.9)+1)*50)+'%'})}
+function blueCab(p,x,z,h){const g=grp(x,0,z,0,p);box(2.2,h,2,mat(0x6b9fd6,{roughness:.35}),0,h/2,0,g);box(1.8,h*.8,.08,ST,0,h*.45,1.03,g);box(.25,.7,.1,STd,.7,h*.5,1.1,g);box(.4,.3,.06,SC(0xef4444),.5,h*.9,1.04,g);return g}
+function coaterSet(g,A){const BLU=mat(0x3f86d6,{roughness:.4}),CARD=mat(0xcdb98a,{roughness:.85});
+ const c=grp(-3,0,0,0,g);for(const sx of[-.6,.6])box(.18,3.9,.18,BLU,sx,1.95,0,c);box(1.4,.2,.3,BLU,0,3.9,0,c);box(1.4,.18,.3,BLU,0,.15,0,c);cyl(.15,3.4,CARD,0,1.9,0,'y',c,16);const car=box(.6,.28,.6,DK,0,2,0,c);box(.6,1.2,.5,WH,1.2,.6,0,c);
+ const d=grp(1.5,0,0,0,g);box(3.4,.85,1,WH,0,.85,0,d);box(3.2,.05,.8,mat(0x93c5fd,{roughness:.1}),0,1.28,0,d);cyl(.13,2.4,NI,0,1.34,0,'x',d,14);
+ blueCab(g,4.7,0,3.8);
+ A.push(t=>{car.position.y=2+Math.sin(t*.6)*1;A.status=Math.sin(t*.6)>0?'Auto coating screen (emulsion up-stroke)':'Developing & climatizing coated screens'})}
+// rotary print line (baby or production)
+function rotary(g,A,o){const{len,heads,dry}=o,SP=o.sp||3;
+ const tw=grp(-len/2-3,0,0,0,g);for(const s of[-1.8,1.8])box(.5,5,.5,GR,0,2.5,s,tw);box(.8,.6,4.4,mat(0xb23a8a),0,5.2,0,tw);roll(.9,3.2,-2.6,1.1,0,null,tw);
+ fabIn(A,-len/2-5.2,2,-len/2-3.3,5.4,0,2.6,'dyed','#e4ecf5',SP,g);fabIn(A,-len/2-3.3,5.4,-len/2-2.2,2.3,0,2.6,'dyed','#e4ecf5',SP,g);fabIn(A,-len/2-2.2,2.3,-len/2-.2,1.6,0,2.6,'dyed','#e4ecf5',SP,g);
+ box(len+2,.7,3.6,GR,0,1.05,0,g);box(len,.1,3.3,DK,0,1.45,0,g);belt(A,len,3.1,0,1.52,0,'#2a2e33',SP,g);belt(A,len,3.1,0,.5,0,'#2a2e33',-SP,g);
+ for(let a=-len/2;a<=len/2;a+=3)box(.3,1,.3,GR,a,.55,2.1,g);cyl(.9,3.4,DK,-len/2-.5,1,0,'z',g);cyl(1,3.4,DK,len/2+.5,1,0,'z',g);
+ const pf=ftex('dyed','#e8eef6');pf.repeat.set(len/6,1);const pm=new T.Mesh(new T.PlaneGeometry(len,2.6),new T.MeshStandardMaterial({map:pf,roughness:.9,bumpMap:weave,bumpScale:.25}));pm.rotation.x=-PI/2;pm.position.set(0,1.54,0);g.add(pm);
+ const dot=mk(64,64,q=>{q.fillStyle='#e2dcc0';q.fillRect(0,0,64,64);q.fillStyle='#6b6a5c';for(let y=4;y<64;y+=8)for(let x=(y/8%2)*4+2;x<64;x+=8){q.beginPath();q.arc(x,y,1.6,0,7);q.fill()}},[8,3]);
+ const step=len/(heads+.5),scs=[];
+ for(let i=0;i<heads;i++){const px=-len/2+step*(i+.8),col=cols[i%8];
+  for(const s of[-1,1]){box(.9,.95,.8,mat(0xb23a8a,{roughness:.4}),px,2.3,s*2.1,g);box(.3,.3,.3,YL,px,2.9,s*2.2,g);box(.9,.3,.9,mat(0xb23a8a),px,1.9,s*2.1,g)}
+  box(.35,.35,4.4,GR,px,3.1,0,g);const sc=new T.Mesh(new T.CylinderGeometry(.55,.55,3.6,40),new T.MeshStandardMaterial({color:0xffffff,map:dot,metalness:.8,roughness:.4}));sc.rotation.x=PI/2;sc.position.set(px,2.15,0);sc.castShadow=true;g.add(sc);scs.push(sc);
+  const dr=grp(px-.3,0,4.6,0,g);cyl(.29,.95,DRUM,0,.48,0,'y',dr,36);cyl(.31,.06,mat(0x2f6fd0),0,.95,0,'y',dr,36);cyl(.295,.2,mat(col,{emissive:col,emissiveIntensity:.2}),0,.5,0,'y',dr,36);
+  tube([[px-.3,1,4.6],[px-.3,3.6,4.3],[px,3.6,2.8],[px,2.95,2.3]],mat(col,{roughness:.3,transparent:true,opacity:.75}),.045,g)}
+ A.push((t,dt)=>{pf.offset.x-=SP*dt/6;scs.forEach(s=>s.rotation.y+=SP/.55*dt)});
+ box(len,.1,1.2,DK,0,.8,3.3,g);const cab=grp(len*.25,0,-2.8,0,g);box(4,3.2,.9,CR,0,1.9,0,cab);for(let i=0;i<4;i++)box(.8,2.7,.05,mat(0xd8d0bd),-1.5+i*.95,1.9,.5,cab);
+ if(dry){const dx=len/2+dry/2+1.8,dg=grp(dx,0,0,0,g);box(dry,3.4,4,o.dryCol,0,2,0,dg);box(dry+.2,.18,4.2,WH,0,3.75,0,dg);const fans=[];
+  for(let i=0;i<4;i++){const px=-dry/2+1.5+i*(dry-3)/3;cyl(.75,.14,CR,px,2.1,2.05,'z',dg,36);const f=box(.95,.05,.14,GR,px,2.1,2.15,dg);fans.push(f);const f2=box(.95,.05,.14,GR,px,2.1,2.15,dg);f2.rotation.z=PI/2;fans.push(f2);cyl(.2,.9,RD,px,1.2,2.5,'z',dg,16)}
+  box(dry*.5,1.2,.05,GL,0,2.7,2.03,dg);const wt=ftex('print');wt.repeat.set(dry*.5/6,1);const wm=new T.Mesh(new T.PlaneGeometry(dry*.5,1.1),new T.MeshStandardMaterial({map:wt,roughness:.9,emissive:0x442200,emissiveIntensity:.3}));wm.position.set(0,2.7,2);dg.add(wm);cyl(.5,dry-1,GR,0,4.9,0,'x',dg);
+  fabIn(A,len/2+.5,1.7,len/2+1.9,2,0,2.6,'print',null,SP,g);
+  const pl=grp(dx+dry/2+2,0,0,0,g);box(2.2,3.4,3.2,GR,0,1.7,0,pl);const st=box(1.8,1,1.8,mat(0xe8e8e8),0,.6,-2.6,pl);const arm=box(.3,.3,2.4,ST,-.6,3.5,0,pl);
+  A.push((t,dt)=>{fans.forEach(f=>f.rotation.z+=dt*9);wt.offset.x-=SP*dt/6;const h=.3+((t%40)/40)*2.2;st.scale.y=h;st.position.y=h/2;arm.position.x=-.6+Math.sin(t*2)*.5})}
+ else{const pl=grp(len/2+2.6,0,0,0,g);box(1.6,1.4,3,GR,0,.7,0,pl);fabIn(A,len/2+.5,1.6,len/2+2,1.5,0,2.6,'print',null,SP,g)}
+ A.push(()=>{A.status='Printing '+heads+' colours · '+Math.round(SP*20)+' m/min'})}
+// flatbed screen printer with stop-and-go cycle
+function flatbed(g,A){const N=4,PS=3.2,TL=14,TY=1;const EBL=mat(0x1f5fc4,{roughness:.35,metalness:.25}),SSL=mat(0xc9ced4,{roughness:.3,metalness:.85}),PNL=mat(0xb9c0c7,{roughness:.5,metalness:.35}),AL=mat(0xdfe3e7,{roughness:.3,metalness:.85}),BK=mat(0x15171a,{roughness:.8});
+ for(const sz of[-1.8,1.8]){box(TL,.22,.2,EBL,0,.9,sz,g);box(TL,.14,.3,EBL,0,.28,sz,g)}
+ for(let x=-TL/2+.4;x<=TL/2;x+=2){box(.2,.9,.2,EBL,x,.45,-1.8,g);box(.2,.9,.2,EBL,x,.45,1.8,g);box(.2,.14,3.6,EBL,x,.28,0,g)}
+ box(TL,.14,3.4,mat(0x9a7448,{roughness:.6}),0,TY,0,g);for(const sz of[-1.72,1.72])box(TL,.12,.12,OR,0,TY+.16,sz,g);
+ const bt=ftex('dyed','#b8bdb0');bt.repeat.set(TL/6,1);const bm=new T.Mesh(new T.PlaneGeometry(TL,3.1),new T.MeshStandardMaterial({map:bt,roughness:.85}));bm.rotation.x=-PI/2;bm.position.y=TY+.09;g.add(bm);
+ const ft=ftex('print');ft.repeat.set(TL/6,1);const fm=new T.Mesh(new T.PlaneGeometry(TL-.4,2.5),new T.MeshStandardMaterial({map:ft,bumpMap:weave,bumpScale:.25,roughness:.9}));fm.rotation.x=-PI/2;fm.position.y=TY+.11;g.add(fm);
+ const SSP=mat(0xd9dee2,{roughness:.26,metalness:.92});for(const sz of[-1.98,1.98])box(TL+.1,.92,.04,SSP,0,.58,sz,g);
+ cyl(.3,3.3,BK,TL/2+.1,TY,0,'z',g,28);cyl(.25,3.3,BK,-TL/2-.1,TY,0,'z',g,28);
+ const frs=[],trs=[];for(let i=0;i<N;i++){const x=-4.8+i*PS,s=grp(x,1.27,0,0,g);frs.push(s);for(const[dx,dz,w,d]of[[0,1.45,2.6,.14],[0,-1.45,2.6,.14],[1.25,0,.14,3],[-1.25,0,.14,3]])box(w,.12,d,SSL,dx,0,dz,s);
+  const pm=new T.Mesh(new T.PlaneGeometry(2.4,2.8),new T.MeshBasicMaterial({color:cols[i%8],transparent:true,opacity:.35,depthWrite:false}));pm.rotation.x=-PI/2;pm.position.y=.01;s.add(pm);
+  for(const sz of[-2.1,2.1])for(const sx of[-1.3,1.3])cyl(.06,1.2,ST,sx,-.5,sz,'y',s,10);
+  const tl=grp(0,0,0,0,s);for(const sx of[-1.38,1.38])box(.3,.26,.42,EBL,sx,.27,0,tl);box(2.95,.22,.06,AL,0,.22,0,tl);box(2.9,.18,.035,BK,0,.08,0,tl);trs.push(tl)}
+ const f=grp(-TL/2-2.8,0,0,0,g);for(const sz of[-1.9,1.9]){box(.3,3.4,.3,EBL,0,1.7,sz,f);box(1.8,.2,.3,EBL,.3,.2,sz,f)}box(.3,.3,4.1,EBL,0,3.4,0,f);roll(.85,3,.4,2.4,0,null,f);
+ const ramp=(x0,y0,x1,y1,t)=>{const L=Math.hypot(x1-x0,y1-y0);t.repeat.set(L/6,1);const q=grp((x0+x1)/2,(y0+y1)/2,0,0,g);q.rotation.z=Math.atan2(y1-y0,x1-x0);const m=new T.Mesh(new T.PlaneGeometry(L,2.5),new T.MeshStandardMaterial({map:t,bumpMap:weave,bumpScale:.25,roughness:.9,side:2}));m.rotation.x=-PI/2;q.add(m)};
+ const fi=ftex('dyed','#f6e7c6');ramp(-TL/2-2.4,2.5,-TL/2+.4,TY+.11,fi);const fo=ftex('print');ramp(TL/2,TY+.11,TL/2+3,2.55,fo);
+ const D0=TL/2+3,DL=9,dry=grp(D0+DL/2,0,0,0,g);box(DL,.5,4.2,EBL,0,.35,0,dry);box(DL,2.9,3.9,PNL,0,2.15,0,dry);for(let i=1;i<6;i++)box(.05,2.9,3.96,mat(0x6a737c),-DL/2+i*DL/6,2.15,0,dry);box(DL+.1,.12,4,WH,0,3.65,0,dry);
+ for(let i=0;i<3;i++)cyl(.45,.14,SSL,-3+i*3,3.8,-.6,'y',dry,28);box(1.6,1.2,1.2,EBL,1.5,1.4,-2.6,dry);
+ const ex=grp(DL/2+.8,0,0,0,dry);box(1.6,1.4,3.4,EBL,0,.9,0,ex);box(1.4,.5,3,mat(0xf6e7c6,{roughness:.9}),0,1.85,0,ex);
+ const c=grp(-TL/2+1.2,0,3.1,0,g);box(.9,2.3,.7,mat(0xaab3bb,{roughness:.4,metalness:.3}),0,1.15,0,c);box(.5,.32,.02,mat(0x3b82f6,{emissive:0x1e40af,emissiveIntensity:.6}),0,1.9,.37,c);
+ A.push(t=>{const P=5.75,pt=t%P,n=Math.floor(t/P),cum=n+sm(pt/1.6);const lift=pt<1.6?1:pt<2?1-sm((pt-1.6)/.4):pt<5.05?0:pt<5.45?sm((pt-5.05)/.4):1;
+  const tz=pt<2?-1.2:pt<3.47?-1.2+2.4*sm((pt-2)/1.47):pt<3.87?1.2:pt<5.05?1.2-2.4*sm((pt-3.87)/1.18):-1.2;const off=-cum*PS/6;bt.offset.x=off;ft.offset.x=off;fi.offset.x=off;fo.offset.x=off;
+  frs.forEach(s=>s.position.y=1.12+.15*lift);trs.forEach(q=>q.position.z=tz);
+  A.status='Flatbed cycle: '+(pt<1.6?'blanket advances':pt<2?'screens lowering':pt<3.47?'squeegee stroke across the fabric':pt<5.05?'flood return':'screens lifting')})}
+// digital inkjet printer
+function digital(g,A,w,name){box(w,.5,3.8,OR,0,.25,0,g);box(w,2.6,3.6,NV,0,1.8,-.1,g);box(w+.05,.12,3.7,OR,0,3.15,-.1,g);box(w*.6,1.1,.08,GL,-w*.12,2.2,1.74,g);box(1.3,3.1,3.4,NV,w/2-.3,1.85,-.1,g);scr(.8,.6,w/2-.3,2.4,1.62,0x7dd3fc,g);
+ const lb=new T.Mesh(new T.PlaneGeometry(2.4,.45),new T.MeshBasicMaterial({map:spriteTex(name,'#e8eef5','#2d3b4e',256,48,'italic bold 30px Arial')}));lb.position.set(-w/2+1.6,3,1.74);g.add(lb);
+ const cr=box(.7,.4,.5,OR,0,2.5,.4,g);const t2=ftex('print');t2.repeat.set(w/8,1);const dr=new T.Mesh(new T.PlaneGeometry(w*.55,1.6),new T.MeshStandardMaterial({map:t2,side:2,roughness:.9}));dr.position.set(-w*.12,.95,2);dr.rotation.x=-.12;g.add(dr);cyl(.3,w*.6,mat(0xf0ead6),-w*.12,.35,2.3,'x',g,20);
+ A.push((t,dt)=>{cr.position.x=-w*.12+Math.sin(t*1.6)*w*.25;t2.offset.y-=dt*.25;A.status='Inkjet carriage printing · no screens needed'})}
+// finishing stenter
+function stenter(g,A,len,n){const cw=len/n,chim=[];box(len,.35,6,GR,0,.3,0,g);
+ for(let i=0;i<n;i++){const px=-len/2+cw*(i+.5);box(cw-.12,2.5,5.6,mat(0xc9ced4,{metalness:.75,roughness:.35}),px,1.8,0,g);box(cw-.3,.2,5.8,ST,px,3.1,0,g);
+  cyl(.4,2.4,STd,px,4.5,-1.5,'y',g,16);cyl(.45,.4,ST,px,3.4,-1.5,'y',g,16);cyl(.34,.61,ST,px,3.8,1.8,'y',g,18);cyl(.34,2,ST,px,3.8,.5,'z',g,18);
+  const elb=new T.Mesh(new T.TorusGeometry(.8,.34,12,18,PI/2),ST);elb.position.set(px,4.6,-.4);elb.rotation.set(0,PI/2,0);g.add(elb);
+  for(let k=0;k<3;k++)box(.7,.5,.08,GR,px-cw*.25+k*.7,1.5,2.84,g);box(.9,1.1,.06,mat(0x5a6470,{metalness:.8,roughness:.4}),px,1.7,2.85,g);
+  chim.push(sph(.35,mat(0xffffff,{transparent:true,opacity:.0,roughness:1}),px,5.8,-1.5,1,1,1,g))}
+ const inl=grp(-len/2-3,0,0,0,g);for(const s of[-2.5,2.5])box(.3,2.8,.3,GR,0,1.4,s,inl);box(.3,.3,5.3,GR,0,2.8,0,inl);roll(1.1,4.6,-len/2-5.4,1.3,0,0xe4ecf5,g);
+ fabIn(A,-len/2-4.5,1.3,-len/2,1.3,0,4.8,'dyed','#e4ecf5',1.6,g);roll(1.1,4.6,len/2+4.8,1.3,0,0xece4d2,g);fabIn(A,len/2,1.3,len/2+3.7,1.3,0,4.8,'dyed','#f2eee2',1.6,g);box(len,.1,.1,YL,0,1.3,-2.9,g);
+ A.push(t=>{chim.forEach((c,i)=>{const p=((t*.4+i*.17)%1);c.position.y=5.8+p*3;c.material.opacity=.35*(1-p);c.scale.setScalar(1+p*1.5)});A.status='Heat-setting & width control · '+n+' chambers at 180 °C'})}
+// A-frame batching trolley
+function batcher(p,o){o=o||{};const col=mat(o.col||0x1f6fd0,{roughness:.42,metalness:.15});const g=new T.Group();p.add(g);const L=3.7,W=1.12,sY=1.42;
+ for(const s of[-1,1])box(L,.1,.06,col,0,.32,s*W/2,g);for(const e of[-1,0,1])box(.06,.1,W,col,e*(L/2-.03),.32,0,g);
+ for(const ex of[-1,1])for(const s of[-1,1])cyl(.1,.06,mat(0x2a2d31,{roughness:.8}),ex*(L/2-.14),.1,s*(W/2-.03),'z',g,20);
+ for(const e of[-1,1]){const a=grp(e*(L/2-.22),0,0,0,g);for(const s of[-1,1])strut([0,.36,s*(W/2-.05)],[0,sY-.14,s*.2],.09,col,a);box(.12,.1,.6,col,0,sY-.13,0,a);box(.28,.2,.3,STd,0,sY-.02,0,a)}
+ cyl(.075,L-.1,ST,0,sY,0,'x',g,20);cyl(.2,.07,mat(0x23272c),-(L/2-.5),sY,0,'x',g,24);
+ if(o.fab!==null){cyl(o.r||.62,2.4,mat(o.fab==null?0xf4efe2:o.fab,{roughness:.95,bumpMap:weave,bumpScale:.12}),0,sY,0,'x',g,40)}
+ tube([[-L/2+.12,.5,W/2-.06],[-L/2-.12,.62,W/2-.1],[-L/2-.12,.62,-W/2+.1],[-L/2+.12,.5,-W/2+.06]],col,.022,g);return g}
+function trolleyBay(g,A){const F=[0xf4efe2,0x1b2a4a,0xb3262e,0xe8e2d0];for(let i=0;i<4;i++){const b=batcher(g,{col:[0x1f6fd0,0xf6c21a][i%2],fab:F[i]});b.scale.setScalar(.75);b.position.set(0,0,-2.4+i*1.6)}
+ box(3.4,.03,.12,YL,0,.04,-3.4,g);box(3.4,.03,.12,YL,0,.04,3.4,g);A.status='WIP buffer: 4 batching trolleys'}
+// utilities
+function boiler(g,A){const RED=mat(0xb33a2c,{roughness:.45});vessel(1.4,4.6,RED,0,1.9,0,g);for(const sx of[-1.8,1.8])box(.5,.9,2.4,GR,sx,.45,0,g);box(1.4,1.6,1.6,NV,-3.6,.8,0,g);cyl(.35,1.2,ST,-3.6,2,0,'y',g,16);
+ cyl(.45,8,STd,3.4,4,-1,'y',g,20);cyl(.2,4.8,ST,0,3.6,0,'x',g,12);box(.8,1.6,.6,CR,2.8,.8,1.6,g);scr(.4,.3,2.8,1.2,1.92,0x38bdf8,g);
+ const puffs=[];for(let i=0;i<4;i++)puffs.push(sph(.5,mat(0xf8f8f8,{transparent:true,opacity:0,roughness:1}),3.4,8.2,-1,1,1,1,g));
+ A.push(t=>{puffs.forEach((p,i)=>{const q=(t*.25+i/4)%1;p.position.y=8.2+q*5;p.position.x=3.4+q*1.5;p.material.opacity=.45*(1-q);p.scale.setScalar(1+q*2)});A.status='Steam on line: 10 bar'})}
+function etp(g,A){const CON=mat(0xb8bcc0,{roughness:.8}),WAT=mat(0x4f7f6a,{roughness:.1,metalness:.2});const arms=[];
+ for(const sx of[-3.2,3.2]){cyl(2.6,1.3,CON,sx,.65,0,'y',g,40);cyl(2.4,.05,WAT,sx,1.25,0,'y',g,40);const a=grp(sx,1.45,0,0,g);box(5,.18,.4,YL,0,0,0,a);cyl(.25,.6,ST,0,.2,0,'y',a,14);arms.push(a)}
+ box(5,1.2,3,CON,0,.6,4.2,g);box(4.6,.05,2.6,mat(0x6f8f60,{roughness:.2}),0,1.21,4.2,g);const bub=[];for(let i=0;i<8;i++)bub.push(sph(.12,mat(0xffffff,{transparent:true,opacity:.7}),-2+i*.55,1.25,4.2+((i*7)%5-2)*.4,1,1,1,g));
+ box(2,2.4,2,CR,7.2,1.2,4,g);A.push((t,dt)=>{arms.forEach(a=>a.rotation.y+=dt*.3);bub.forEach((b,i)=>b.position.y=1.25+Math.abs(Math.sin(t*3+i))*.2);A.status='Treating effluent: clarifiers turning'})}
+function qcLab(g,A){box(6,3,4,WH,0,1.5,0,g);box(6.1,.2,4.1,BL,0,3.1,0,g);box(4.6,1,.05,GL,0,1.9,2.02,g);box(1,2.1,.06,mat(0x5a6470),2.3,1.05,2.02,g);box(1.2,.7,.6,GR,-2,3.5,0,g);
+ const s1=scr(.6,.4,-1.2,1.6,1.9,0x38bdf8,g),s2=scr(.6,.4,0,1.6,1.9,0x22c55e,g),s3=scr(.6,.4,1.2,1.6,1.9,0xf97316,g);A.push(t=>{[s1,s2,s3].forEach((s,i)=>s.material.emissiveIntensity=.6+.5*Math.sin(t*2+i*2));A.status='Testing fastness, GSM & shrinkage'})}
 
-const TERRAIN={FLOOR:0,PATH:1,WALL:2,WATER:3};
+// =====================================================================
+// PLANT LAYOUT: slab, departments, floor grid
+// =====================================================================
+const X0=-60,X1=70,Z0=-44,Z1=40;
+const ZONES={
+ lab:{name:'Lab / dispensing',r:[-60,-33,-44,-16],c:0xf0e385,tc:'#fde68a'},
+ dye:{name:'Dyeing hall',r:[-33,-4,-44,-16],c:0x9ad8c9,tc:'#67e8f9'},
+ finish:{name:'Finishing dept',r:[-4,70,-44,-16],c:0xb4d0e8,tc:'#fca5a5'},
+ kitchen:{name:'Colour kitchen',r:[-60,-20,-16,0],c:0xd8c4f0,tc:'#d8b4fe'},
+ trolley:{name:'Trolley storage',r:[-60,-45,0,40],c:0xb4dca8,tc:'#fdba74'},
+ engrave:{name:'Screen engraving',r:[-45,-20,0,40],c:0xc9b6e8,tc:'#f0abfc'},
+ rotary:{name:'Rotary printing',r:[-20,30,-16,40],c:0xf0c895,tc:'#fcd34d'},
+ prep:{name:'Preparatory',r:[30,70,-16,14],c:0xe8d8b0,tc:'#bef264'},
+ flat:{name:'Flatbed & digital',r:[30,70,14,40],c:0xe8b0d4,tc:'#7dd3fc'}};
+function zone(x0,x1,z0,z1,col,y,h){const w=x1-x0,d=z1-z0;const t=concrete.clone();t.needsUpdate=true;t.repeat.set(w/6,d/6);const m=new T.Mesh(new T.BoxGeometry(w,h,d),new T.MeshStandardMaterial({color:col,map:t,roughness:.42,metalness:0,bumpMap:t,bumpScale:.3}));m.position.set((x0+x1)/2,y+h/2,(z0+z1)/2);m.receiveShadow=true;m.raycast=()=>{};S.add(m);return m}
+{const base=new T.Mesh(new T.BoxGeometry(X1-X0,1,Z1-Z0),mat(0xb9a58f,{roughness:.7}));base.position.set((X0+X1)/2,-.5,(Z0+Z1)/2);base.receiveShadow=true;S.add(base);
+ zone(X0,X1,Z0,Z1,0xc9d3dc,0,.05);for(const k in ZONES){const z=ZONES[k],r=z.r;zone(r[0]+.15,r[1]-.15,r[2]+.15,r[3]-.15,z.c,.05,.04);tag(z.name,(r[0]+r[1])/2,9,(r[2]+r[3])/2,z.tc)}
+ const TS=6,pts=[];for(let x=X0;x<=X1+.01;x+=TS)pts.push(x,.13,Z0,x,.13,Z1);for(let z=Z0;z<=Z1+.01;z+=TS)pts.push(X0,.13,z,X1,.13,z);
+ const gg=new T.BufferGeometry();gg.setAttribute('position',new T.Float32BufferAttribute(pts,3));S.add(new T.LineSegments(gg,new T.LineBasicMaterial({color:0x5b6670,transparent:true,opacity:.35})));
+ const dl=(txt,x,z,big)=>{const m=new T.Mesh(new T.PlaneGeometry(big?7:3.6,big?1.75:.9),new T.MeshBasicMaterial({map:spriteTex(txt,big?'#111':'#e8eef5',big?'rgba(242,177,52,.95)':'rgba(18,24,32,.85)',256,64,'bold 36px Arial'),transparent:true}));m.rotation.x=-PI/2;m.position.set(x,.2,z);S.add(m);return m};
+ for(let x=X0;x<X1-.01;x+=TS)dl(Math.min(TS,X1-x)+' m',x+Math.min(TS,X1-x)/2,Z1+1.6);
+ for(let z=Z0;z<Z1-.01;z+=TS){const d=Math.min(TS,Z1-z);dl(d+' m',X1+1.6,z+d/2).rotation.z=-PI/2}
+ dl('Plant length '+(X1-X0)+' m',(X0+X1)/2,Z1+3.8,true);dl('Plant width '+(Z1-Z0)+' m',X1+3.8,(Z0+Z1)/2,true).rotation.z=-PI/2;
+ const dm=new T.LineBasicMaterial({color:0xf2b134});for(const p of[[X0,.15,Z1+2.7,X1,.15,Z1+2.7],[X1+2.7,.15,Z0,X1+2.7,.15,Z1]]){const g2=new T.BufferGeometry();g2.setAttribute('position',new T.Float32BufferAttribute(p,3));S.add(new T.Line(g2,dm))}
+ // blue dye supply pipe along the dyeing hall wall (as in the layout)
+ tube([[-33,6.5,-43],[-5,6.5,-43]],mat(0x1c8cff,{roughness:.35,emissive:0x0a4fa0,emissiveIntensity:.4}),.18)}
 
-// ---- DEPARTMENT ZONES (cosmetic) ----
-const ZONES=[
-  {name:'Preparatory',color:'#2a3a2e',x:0,y:0,w:18,h:16},
-  {name:'Dyeing Hall',color:'#1e2e3a',x:0,y:16,w:18,h:18},
-  {name:'Colour Kitchen',color:'#2e2a3a',x:18,y:16,w:16,h:18},
-  {name:'Printing Dept',color:'#3a2e2a',x:18,y:0,w:18,h:16},
-  {name:'Screen Engraving',color:'#2a2e3a',x:36,y:0,w:16,h:16},
-  {name:'Finishing',color:'#2e3a2e',x:36,y:16,w:16,h:18},
-  {name:'Warehouse',color:'#3a3a2e',x:0,y:34,w:52,h:18},
-];
-
-// ---- MACHINE DEFINITIONS (based on real textile factory equipment) ----
-const MACH={
-  // === PREPARATORY ===
-  singeing:{name:'Singeing Machine',cat:'prep',cost:3000,upkeep:25,icon:'🔥',color:'#c05020',w:3,h:1,
-    input:'greige',output:'scoured',time:8,desc:'Burns off protruding fibres for smooth fabric surface',unlocked:true},
-  desizing:{name:'Desizing & Scouring',cat:'prep',cost:4000,upkeep:35,icon:'🧪',color:'#4a8a6a',w:3,h:2,
-    input:'greige',output:'scoured',time:10,desc:'Removes sizing agents and natural impurities from greige fabric',unlocked:true},
-  bleaching:{name:'Bleaching Range',cat:'prep',cost:5500,upkeep:40,icon:'⚪',color:'#a0b0c0',w:4,h:2,
-    input:'scoured',output:'bleached',time:12,desc:'Continuous bleaching with H₂O₂ for uniform whiteness',research:'bleach_range'},
-  mercerizer:{name:'Mercerizing Machine',cat:'prep',cost:8000,upkeep:55,icon:'✨',color:'#7090b0',w:4,h:2,
-    input:'bleached',output:'mercerized',time:14,desc:'NaOH treatment for lustre, strength and dye uptake. Premium fabric path.',research:'mercerizer'},
-
-  // === DYEING ===
-  dispensing:{name:'Dispensing Station',cat:'dye',cost:3500,upkeep:20,icon:'⚖️',color:'#3f7d3f',w:2,h:2,
-    input:null,output:'dye_paste',time:6,desc:'Green-frame weighing table with moving gantry crane — weighs and dispenses dye chemicals',unlocked:true,generator:true},
-  jet_dye:{name:'HT Jet Dyeing Machine',cat:'dye',cost:12000,upkeep:80,icon:'🌀',color:'#2162ae',w:3,h:3,
-    input:'bleached',output:'dyed',time:16,needs:'dye_paste',desc:'High-temperature jet dyeing vessel with dosing cabinet — dyes fabric in rope form at 130°C',unlocked:true},
-  jigger:{name:'Jigger Dyeing',cat:'dye',cost:6000,upkeep:45,icon:'🔄',color:'#5a7aaa',w:2,h:2,
-    input:'bleached',output:'dyed',time:14,needs:'dye_paste',desc:'Open-width dyeing on a jigger for flat fabrics',research:'jigger'},
-  padder:{name:'Pad-Dry-Cure',cat:'dye',cost:15000,upkeep:90,icon:'📐',color:'#4a6a8a',w:4,h:2,
-    input:'bleached',output:'dyed',time:10,needs:'dye_paste',desc:'Continuous padding, drying and curing line — high throughput',research:'pad_dry'},
-
-  // === COLOUR KITCHEN ===
-  colour_mixer:{name:'Colour Kitchen Mixer',cat:'kitchen',cost:5000,upkeep:30,icon:'🎨',color:'#9b6cc9',w:2,h:2,
-    input:null,output:'print_paste',time:8,desc:'SS tanks with stirrers — mixes print paste from pigments and binders',unlocked:true,generator:true},
-  auto_dispenser:{name:'Auto Colour Dispenser',cat:'kitchen',cost:12000,upkeep:50,icon:'🤖',color:'#7a5ab0',w:3,h:2,
-    input:null,output:'print_paste',time:4,desc:'Computer-controlled dispensing with stored recipes. Double output speed.',research:'auto_dispenser',generator:true},
-
-  // === PRINTING ===
-  rotary_baby:{name:'Baby Rotary (Sampling)',cat:'print',cost:8000,upkeep:50,icon:'🖨️',color:'#b23a8a',w:4,h:2,
-    input:'bleached',output:'printed',time:14,needs:'print_paste',needs_screen:true,desc:'4-head sampling rotary line for design proofs and short runs',unlocked:true},
-  rotary_prod:{name:'Rotary Print Line',cat:'print',cost:20000,upkeep:100,icon:'🖨️',color:'#d94070',w:5,h:3,
-    input:'bleached',output:'printed',time:10,needs:'print_paste',needs_screen:true,desc:'8-head production rotary with dryer — blanket, spinning screens, squeegees, hot-air dryer and plaiter',research:'rotary_prod'},
-  flatbed:{name:'Flatbed Screen Printer',cat:'print',cost:25000,upkeep:110,icon:'📋',color:'#1f5fc4',w:5,h:3,
-    input:'bleached',output:'printed',time:12,needs:'print_paste',needs_screen:true,desc:'Stop-and-go flatbed with hydraulic screen lift, squeegee carriages, blanket wash and panelled dryer',research:'flatbed'},
-  digital:{name:'Digital Inkjet Printer',cat:'print',cost:35000,upkeep:80,icon:'💻',color:'#2d3b4e',w:3,h:2,
-    input:'bleached',output:'printed',time:6,desc:'High-speed digital printer — no screens needed, unlimited colours, low paste usage',research:'digital'},
-
-  // === SCREEN ENGRAVING ===
-  coater:{name:'Screen Coating Machine',cat:'engrave',cost:4000,upkeep:20,icon:'🖌️',color:'#3c78b8',w:2,h:1,
-    input:null,output:'screens',time:10,desc:'Auto coating of rotary screens with photosensitive emulsion',unlocked:true,generator:true},
-  laser_engraver:{name:'Laser Engraver',cat:'engrave',cost:15000,upkeep:60,icon:'⚡',color:'#d23a44',w:3,h:1,
-    input:null,output:'screens',time:6,desc:'Laser exposure of coated screens from digital design files — precision and speed',research:'laser_eng',generator:true},
-  developer:{name:'Screen Developer',cat:'engrave',cost:3000,upkeep:15,icon:'🚿',color:'#5090c0',w:2,h:1,
-    input:null,output:'screens',time:8,desc:'Develops exposed screens by washing away unexposed emulsion',unlocked:true,generator:true},
-
-  // === FINISHING ===
-  stenter:{name:'Stenter Frame',cat:'finish',cost:18000,upkeep:85,icon:'📏',color:'#c9ced4',w:5,h:2,
-    input:'dyed',output:'finished',time:12,desc:'6-chamber stenter with pin/clip chains — heat-sets, dries and width-controls fabric',research:'stenter'},
-  stenter_print:{name:'Stenter (Print Finish)',cat:'finish',cost:18000,upkeep:85,icon:'📏',color:'#aab4be',w:5,h:2,
-    input:'printed',output:'finished',time:12,desc:'Finishing stenter for printed goods — curing and setting the print',research:'stenter'},
-  calender:{name:'Calender',cat:'finish',cost:8000,upkeep:40,icon:'🔧',color:'#8a9aaa',w:2,h:2,
-    input:'dyed',output:'finished',time:10,desc:'Heavy roller machine for smooth or glazed finish',unlocked:true},
-  sanforizer:{name:'Sanforizer',cat:'finish',cost:12000,upkeep:55,icon:'📐',color:'#6a8a7a',w:4,h:2,
-    input:'finished',output:'finished',time:8,desc:'Pre-shrinking treatment for dimensional stability. Upgrades existing finished fabric.',research:'sanforizer',upgrader:true},
-
-  // === INFRASTRUCTURE ===
-  boiler:{name:'Steam Boiler',cat:'infra',cost:10000,upkeep:60,icon:'♨️',color:'#8a6050',w:3,h:3,
-    desc:'Supplies steam to dyeing, printing and finishing machines. Boosts all machine speed by 15%.',unlocked:true,utility:true},
-  etp:{name:'Effluent Treatment Plant',cat:'infra',cost:15000,upkeep:70,icon:'♻️',color:'#3a8a5a',w:4,h:3,
-    desc:'Treats wastewater. Required for reputation above 70 and unlocks export orders.',research:'etp',utility:true},
-  lab:{name:'Quality Lab',cat:'infra',cost:6000,upkeep:25,icon:'🔬',color:'#6a7a8a',w:2,h:2,
-    desc:'Tests colour fastness, shrinkage, GSM. Reduces rejection rate and boosts reputation.',unlocked:true,utility:true},
-  trolley_store:{name:'Trolley Storage Bay',cat:'infra',cost:2000,upkeep:5,icon:'🛒',color:'#8b6914',w:3,h:2,
-    desc:'A-frame batching trolleys for WIP buffer between departments. +10% throughput.',unlocked:true,utility:true},
-
-  // === PATHS ===
-  path:{name:'Factory Aisle',cat:'path',cost:20,upkeep:0,icon:'🛤️',w:1,h:1,color:'#706858',unlocked:true,isPath:true},
-};
-
-// ---- RESEARCH TREE ----
+// =====================================================================
+// GAME DATA
+// =====================================================================
+const MAT={greige:'Greige',scoured:'Scoured',rfd:'Ready-for-dyeing/printing',dyed:'Dyed',printed:'Printed',fd:'Finished dyed',fp:'Finished printed',recipe:'Dye recipes',paste:'Print paste',screens:'Engraved screens'};
+const CAP={recipe:30,paste:30,screens:20,scoured:60,rfd:60,dyed:60,printed:60};
+const DEF={
+ desize:{name:'Desizing & scouring range',zone:'prep',icon:'🧪',cost:9000,up:450,time:6,need:{greige:1},out:{scoured:1},b:(g,A)=>prepRange(g,A,{L:12,n:4,acc:mat(0x4a8a6a,{roughness:.45}),kind:'grey',inCol:0xe6e0cf,outCol:0xefe8d6}),desc:'Washer boxes with squeeze rollers remove size and natural impurities from greige cloth.'},
+ bleach:{name:'Continuous bleaching range',zone:'prep',icon:'⚪',cost:14000,up:650,time:6,need:{scoured:1},out:{rfd:1},b:(g,A)=>prepRange(g,A,{L:14,n:3,jbox:1,acc:mat(0x7090b0,{roughness:.45}),kind:'dyed',col:'#f6f8fa',inCol:0xefe8d6,outCol:0xf8fafc}),desc:'Peroxide padder, J-box steamer and washers give PFD (ready for dyeing/printing) fabric.'},
+ station:{name:'Dispensing station',zone:'lab',icon:'⚖️',cost:4000,up:180,time:5,need:{},out:{recipe:1},b:(g,A)=>station(g,A),desc:'Green-frame weighing table with moving gantry: weighs dyes and chemicals into recipe jars for the jets.'},
+ chem:{name:'Chemical tank platform',zone:'lab',icon:'🛢️',cost:6000,up:150,util:1,b:(g,A)=>platform(g,A,3,0x2f6fb5),desc:'Stirred stainless tanks on a blue frame. Each platform speeds up all jets by 10% (max 2).'},
+ jet:{name:'HT jet dyeing machine',zone:'dye',icon:'🌀',cost:16000,up:850,time:12,need:{rfd:1,recipe:1},out:{dyed:1},sc:[.86,.65,.65],b:(g,A)=>jet(g,A),desc:'High-temperature jet vessel with dosing cabinet. Dyes fabric in rope form at 130 °C. Needs PFD fabric + a dye recipe.'},
+ kitchen:{name:'Colour kitchen',zone:'kitchen',icon:'🎨',cost:7000,up:300,time:6,need:{},out:{paste:1},b:(g,A)=>kitchen(g,A),desc:'Tank platform, drum conveyor and dispenser: mixes print paste for the print lines.'},
+ autokit:{name:'Auto colour dispenser',zone:'kitchen',icon:'🤖',cost:18000,up:600,time:3,need:{},out:{paste:1},research:'autokit',b:(g,A)=>autoKitchen(g,A),desc:'Computer-controlled dispensing with canister carousel and stirrers — twice as fast as a manual kitchen.'},
+ coater:{name:'Screen coating & developing',zone:'engrave',icon:'🖌️',cost:6000,up:250,time:14,need:{},out:{screens:1},b:(g,A)=>coaterSet(g,A),desc:'Auto coater, developing tank and curing oven: makes rotary/flat screens the slow way.'},
+ laser:{name:'Laser engraver',zone:'engrave',icon:'⚡',cost:20000,up:700,time:6,need:{},out:{screens:1},research:'laser',b:(g,A)=>engraver(g,A),desc:'Laser exposure of coated screens straight from the design file. Fast and precise.'},
+ baby:{name:'Baby rotary (sampling)',zone:'rotary',icon:'🖨️',cost:14000,up:650,time:13,need:{rfd:1,paste:1,screens:.25},out:{printed:1},b:(g,A)=>rotary(g,A,{len:10,heads:4,dry:0,sp:2.4}),desc:'4-head sampling rotary. Needs PFD fabric, print paste and screens.'},
+ rotary:{name:'Rotary print line',zone:'rotary',icon:'🖨️',cost:45000,up:1700,time:5,need:{rfd:1,paste:1,screens:.1},out:{printed:1},research:'rotary',b:(g,A)=>rotary(g,A,{len:16,heads:8,dry:12,dryCol:mat(0xf5d90a,{roughness:.35}),sp:3.2}),desc:'8-head production rotary: blanket, spinning screens, colour drums, hot-air dryer and plaiter.'},
+ flatbed:{name:'Flatbed screen printer',zone:'flat',icon:'📋',cost:38000,up:1400,time:8,need:{rfd:1,paste:1,screens:.15},out:{printed:1},research:'flatbed',b:(g,A)=>flatbed(g,A),desc:'Stop-and-go flatbed: hydraulic screen lift, squeegee carriages and a panelled dryer.'},
+ digital:{name:'Digital inkjet printer',zone:'flat',icon:'💻',cost:30000,up:1100,time:7,need:{rfd:1,paste:.25},out:{printed:1},research:'digital',sc:[.75,.75,.75],b:(g,A)=>digital(g,A,9.5,'SAPPHIRE 41b'),desc:'Inkjet printer with moving carriage — no screens, very little paste.'},
+ stenter:{name:'Finishing stenter',zone:'finish',icon:'📏',cost:30000,up:1300,time:7,stenter:1,need:{},out:{},b:(g,A)=>stenter(g,A,16,6),desc:'6-chamber stenter with chimneys, inlet frame and batchers. Finishes dyed or printed fabric for delivery.'},
+ bay:{name:'Trolley storage bay',zone:'trolley',icon:'🛒',cost:3000,up:40,util:1,b:(g,A)=>trolleyBay(g,A),desc:'A-frame batching trolleys buffer WIP between departments. +5% plant speed each (max 3) and more trolleys on the aisle.'},
+ boiler:{name:'Steam boiler',zone:'any',icon:'♨️',cost:12000,up:500,util:1,b:(g,A)=>boiler(g,A),desc:'Supplies steam to preparatory, dyeing and finishing. +15% speed on those machines.'},
+ etp:{name:'Effluent treatment plant',zone:'any',icon:'♻️',cost:16000,up:600,util:1,research:'etp',b:(g,A)=>etp(g,A),desc:'Clarifiers and aeration tank. Needed for reputation above 70 and for export orders.'},
+ qc:{name:'Quality lab',zone:'any',icon:'🔬',cost:7000,up:300,util:1,b:(g,A)=>qcLab(g,A),desc:'Tests fastness, GSM and shrinkage. +1 reputation a month and +5% order value.'}};
+const DEPTS=[['prep',['desize','bleach']],['lab',['station','chem']],['dye',['jet']],['kitchen',['kitchen','autokit']],['engrave',['coater','laser']],['rotary',['baby','rotary']],['flat',['flatbed','digital']],['finish',['stenter']],['trolley',['bay']],['any',['boiler','etp','qc']]];
 const RESEARCH=[
-  {id:'bleach_range',name:'Continuous Bleaching',desc:'Unlock bleaching range for uniform whiteness',cost:3000,icon:'⚪'},
-  {id:'mercerizer',name:'Mercerizing',desc:'Unlock mercerizer for premium lustre fabric',cost:6000,icon:'✨',requires:'bleach_range'},
-  {id:'jigger',name:'Jigger Dyeing',desc:'Unlock open-width jigger dyeing',cost:3000,icon:'🔄'},
-  {id:'pad_dry',name:'Pad-Dry-Cure',desc:'Unlock continuous padding line — fastest dyeing',cost:8000,icon:'📐',requires:'jigger'},
-  {id:'auto_dispenser',name:'Auto Dispensing',desc:'Computer-controlled colour dispensing — double speed',cost:7000,icon:'🤖'},
-  {id:'rotary_prod',name:'Production Rotary',desc:'Unlock 8-head production rotary print line',cost:10000,icon:'🖨️'},
-  {id:'flatbed',name:'Flatbed Printing',desc:'Unlock flatbed screen printer with dryer',cost:15000,icon:'📋',requires:'rotary_prod'},
-  {id:'digital',name:'Digital Printing',desc:'Unlock inkjet digital printer — no screens needed',cost:25000,icon:'💻',requires:'flatbed'},
-  {id:'laser_eng',name:'Laser Engraving',desc:'Precision laser screen exposure from digital files',cost:8000,icon:'⚡'},
-  {id:'stenter',name:'Stenter Frame',desc:'Unlock finishing stenter for heat-setting and width control',cost:10000,icon:'📏'},
-  {id:'sanforizer',name:'Sanforizing',desc:'Pre-shrinking for export-grade dimensional stability',cost:8000,icon:'📐',requires:'stenter'},
-  {id:'etp',name:'Effluent Treatment',desc:'Unlock ETP — required for reputation >70 and export orders',cost:12000,icon:'♻️'},
-  {id:'marketing1',name:'Domestic Marketing',desc:'+25% order frequency',cost:5000,icon:'📰'},
-  {id:'marketing2',name:'Export Marketing',desc:'Unlock export orders (higher value)',cost:12000,icon:'🌍',requires:'marketing1'},
-];
+ {id:'rotary',name:'Production rotary',desc:'8-head rotary line with dryer — the volume printer.',cost:20000,icon:'🖨️'},
+ {id:'flatbed',name:'Flatbed printing',desc:'Stop-and-go flatbed printer for large repeats.',cost:22000,icon:'📋',req:'rotary'},
+ {id:'digital',name:'Digital printing',desc:'Inkjet printing, no screens needed.',cost:28000,icon:'💻',req:'flatbed'},
+ {id:'autokit',name:'Auto colour dispensing',desc:'Computer-controlled colour kitchen, 2× speed.',cost:12000,icon:'🤖'},
+ {id:'laser',name:'Laser engraving',desc:'Laser screen exposure — screens in under half the time.',cost:15000,icon:'⚡'},
+ {id:'etp',name:'Effluent treatment',desc:'Unlock the ETP: reputation above 70, export orders.',cost:15000,icon:'♻️'},
+ {id:'export',name:'Export marketing',desc:'Export buyers pay 1.5× — needs a running ETP.',cost:10000,icon:'🌍',req:'etp'},
+ {id:'market',name:'Domestic marketing',desc:'More orders arrive each month.',cost:8000,icon:'📰'},
+ {id:'lean',name:'Lean maintenance',desc:'−15% machine upkeep and half the breakdowns.',cost:12000,icon:'🔧'}];
+const VIEWS=[
+ ['Overview',[5,0,-2],170,.62,.92,'Your integrated plant: preparatory, lab & dispensing, dyeing hall, colour kitchen, screen engraving, rotary printing, flatbed & digital bay, finishing and trolley storage. Pick a machine in Build and place it in its department.'],
+ ['Preparatory',[50,2,-1],62,.6,.85,'Greige fabric is desized, scoured and bleached here. Its output, PFD fabric, feeds both dyeing and printing.'],
+ ['Dyeing dept',[-34,2,-30],62,.7,.9,'Left room: green-frame dispensing stations with gantries make dye recipes. Right hall: HT jet dyeing machines turn PFD fabric + a recipe into dyed fabric.'],
+ ['Colour kitchen',[-40,2,-8],48,.5,.85,'Tank platform with stirrers, drum conveyor and dispensers make the print paste for every print line.'],
+ ['Screen engraving',[-32,1.5,20],62,.5,.85,'Coating, developing and laser exposing make the screens the rotary and flatbed lines wear out.'],
+ ['Rotary printing',[5,2,12],80,.55,.85,'Baby rotary for samples and production rotary lines: cloth runs on the blanket under spinning screens, then through the dryer to the plaiter.'],
+ ['Trolley storage',[-52,1,18],46,.6,.9,'A-frame batching trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
+ ['Flatbed & digital',[50,1.5,27],46,.55,.8,'Flatbed line with stop-and-go cycle, and digital printers with moving carriages.'],
+ ['Finishing',[30,5,-30],80,.6,.8,'Stenters heat-set, dry and width-control dyed or printed fabric into deliverable finished goods.']];
 
-// ---- MATERIAL NAMES ----
-const MAT_NAMES={
-  greige:'Greige Fabric',scoured:'Scoured Fabric',bleached:'Bleached Fabric',
-  mercerized:'Mercerized Fabric',dyed:'Dyed Fabric',printed:'Printed Fabric',
-  finished:'Finished Fabric',dye_paste:'Dye Paste',print_paste:'Print Paste',screens:'Screens'
-};
+// =====================================================================
+// GAME STATE
+// =====================================================================
+const MONTH=60; // seconds of game time per month
+let G,machines=[],MID=0;
+function freshState(){return{money:40000,workers:9,month:0,dayT:0,speed:1,rep:50,revenue:0,research:{},inv:{greige:20,scoured:0,rfd:4,dyed:0,printed:0,fd:0,fp:0,recipe:3,paste:3,screens:3},orders:[],nextOrder:1,greige:250,loan:0,hist:[]}}
+const fmt=n=>'$'+Math.round(n).toLocaleString();
+const unlocked=k=>{const d=DEF[k];return !d.research||!!G.research[d.research]};
 
-// ---- INIT ----
-function initGrid(){
-  G.grid=[];
-  for(let r=0;r<ROWS;r++){G.grid[r]=[];for(let c=0;c<COLS;c++) G.grid[r][c]={terrain:TERRAIN.FLOOR,building:null};}
-  // Entrance aisle
-  for(let r=48;r<ROWS;r++){G.grid[r][26].terrain=TERRAIN.PATH;G.grid[r][25].terrain=TERRAIN.PATH;}
-  // Main horizontal aisle
-  for(let c=2;c<50;c++){G.grid[34][c].terrain=TERRAIN.PATH;G.grid[35][c].terrain=TERRAIN.PATH;}
-  // Vertical aisles
-  for(let r=2;r<48;r++){G.grid[r][17].terrain=TERRAIN.PATH;G.grid[r][35].terrain=TERRAIN.PATH;}
-}
+// ---------- building models & placement ----------
+function buildModel(def){const outer=new T.Group(),inner=new T.Group();outer.add(inner);const A=[];def.b(inner,A);if(def.sc)inner.scale.set(...def.sc);
+ inner.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(inner),c=bb.getCenter(new T.Vector3()),s=bb.getSize(new T.Vector3());
+ inner.position.x-=c.x;inner.position.z-=c.z;if(!def.w){def.w=Math.ceil(s.x+.3);def.d=Math.ceil(s.z+.3);def.h=s.y}return{outer,A}}
+function dims(def,rot){if(!def.w)buildModel(def);return rot%2?[def.d,def.w]:[def.w,def.d]}
+function zoneOf(x,z){for(const k in ZONES){const r=ZONES[k].r;if(x>=r[0]&&x<=r[1]&&z>=r[2]&&z<=r[3])return k}return null}
+function rectOK(def,x,z,rot,ignore){const[w,d]=dims(def,rot),a=[x-w/2,x+w/2,z-d/2,z+d/2];
+ if(def.zone==='any'){if(a[0]<X0||a[1]>X1||a[2]<Z0||a[3]>Z1)return 'Outside the plant'}
+ else{const r=ZONES[def.zone].r;if(a[0]<r[0]||a[1]>r[1]||a[2]<r[2]||a[3]>r[3])return 'Must stand inside '+ZONES[def.zone].name}
+ for(const m of machines){if(m===ignore)continue;const[w2,d2]=dims(m.def,m.rot);if(Math.abs(m.x-x)*2<w+w2+1&&Math.abs(m.z-z)*2<d+d2+1)return 'Too close to '+m.name}
+ return ''}
+const ghostMat=new T.MeshBasicMaterial({color:0x4ade80,transparent:true,opacity:.35,depthWrite:false});
+const labelCache={};
+function setLabel(m,text,col){const k=text+'|'+col;if(m.lk===k)return;m.lk=k;if(!labelCache[k])labelCache[k]=spriteTex(text,col,'rgba(18,24,32,.82)',360,56,'bold 24px Trebuchet MS');m.lab.material.map=labelCache[k];m.lab.material.needsUpdate=true}
+function addMachine(type,x,z,rot,o){o=o||{};const def=DEF[type];const{outer,A}=buildModel(def);outer.position.set(x,0,z);outer.rotation.y=rot*PI/2;S.add(outer);
+ const n=machines.filter(q=>q.type===type).length+1;
+ const m={id:++MID,type,def,x,z,rot,g:outer,A,mt:Math.random()*20,progress:0,hold:false,worker:false,broken:!!o.broken,level:o.level||1,produced:o.produced||0,col:null,name:o.name||def.name+(n>1?' #'+n:''),status:'',running:false,mats:null};
+ outer.traverse(q=>{q.userData.mid=m.id});
+ m.lab=new T.Sprite(new T.SpriteMaterial({depthTest:false,transparent:true}));m.lab.scale.set(7.2,1.12,1);m.lab.position.set(0,(def.h||4)+1.4,0);m.lab.renderOrder=8;m.lab.raycast=()=>{};m.lab.visible=showLabels;outer.add(m.lab);
+ machines.push(m);if(o.col)paint(m,o.col);return m}
+function removeMachine(m){S.remove(m.g);machines=machines.filter(q=>q!==m);if(sel===m)select(null)}
 
-// ---- ISO HELPERS ----
-function toIso(c,r){return{x:(c-r)*HW,y:(c+r)*HH};}
-function toScreen(c,r){let i=toIso(c,r);return{x:i.x*G.zoom+G.cameraX+C.width/2,y:i.y*G.zoom+G.cameraY+C.height/2};}
-function fromScreen(sx,sy){let x=(sx-C.width/2-G.cameraX)/G.zoom,y=(sy-C.height/2-G.cameraY)/G.zoom;return{col:Math.floor((x/HW+y/HH)/2),row:Math.floor((y/HH-x/HW)/2)};}
-function resize(){C.width=C.parentElement.clientWidth;C.height=C.parentElement.clientHeight;}
-window.addEventListener('resize',resize);
+// ---------- painting (machine editor) ----------
+function paintables(m){if(m.mats)return m.mats;const list=[],seen=new Map();
+ m.g.traverse(q=>{if(!q.isMesh||!q.material||Array.isArray(q.material))return;const mt=q.material;if(mt.transparent||!mt.color||mt.map)return;const c=mt.color,L=.299*c.r+.587*c.g+.114*c.b;if(mt.metalness>.7||L<.04)return;
+  let nm=seen.get(mt);if(!nm){nm=mt.clone();nm.userData.base=c.clone();nm.userData.L=L;seen.set(mt,nm)}q.material=nm;if(!list.includes(nm))list.push(nm)});
+ let avg=0;list.forEach(x=>avg+=x.userData.L);m.avg=list.length?avg/list.length:1;m.mats=list;return list}
+function paint(m,hex){m.col=hex;const tc=new T.Color(hex);paintables(m).forEach(x=>{const k=Math.min(1.5,Math.max(.55,x.userData.L/m.avg));x.color.setRGB(Math.min(1,tc.r*k),Math.min(1,tc.g*k),Math.min(1,tc.b*k))})}
+function unpaint(m){m.col=null;(m.mats||[]).forEach(x=>x.color.copy(x.userData.base))}
 
-function darken(hex,a){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  return'#'+((1<<24)+(Math.floor(r*(1-a))<<16)+(Math.floor(g*(1-a))<<8)+Math.floor(b*(1-a))).toString(16).slice(1);}
+// ---------- moving trolleys on the main aisle ----------
+const GA=[],trolleys=[];
+function syncTrolleys(){const want=Math.min(6,2+machines.filter(m=>m.type==='bay').length);
+ while(trolleys.length<want){const k=trolleys.length;const g=batcher(S,{col:[0x1f6fd0,0xf6c21a,0x7f8a78][k%3],fab:[0x1b2a4a,0xb3262e,0xf4efe2,0x15171a][k%4],r:.55});g.scale.setScalar(.8);g.userData.k=k;trolleys.push(g)}
+ while(trolleys.length>want)S.remove(trolleys.pop())}
+GA.push(t=>trolleys.forEach((g,k)=>{const u=((t*.025+k/trolleys.length)%1)*2,p=u<1?u:2-u;g.position.set(-55+p*120,0,-16+(k%2?.9:-.9));g.rotation.y=u<1?0:PI}));
 
-function drawTile(col,row,color,h){
-  let p=toScreen(col,row),ht=(h||0)*G.zoom,w=HW*G.zoom,hh=HH*G.zoom;
-  ctx.beginPath();ctx.moveTo(p.x,p.y-ht);ctx.lineTo(p.x+w,p.y+hh-ht);ctx.lineTo(p.x,p.y+2*hh-ht);ctx.lineTo(p.x-w,p.y+hh-ht);ctx.closePath();
-  ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=0.5;ctx.stroke();
-  if(ht>0){
-    ctx.beginPath();ctx.moveTo(p.x-w,p.y+hh-ht);ctx.lineTo(p.x-w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x,p.y+2*hh-ht);ctx.closePath();ctx.fillStyle=darken(color,.25);ctx.fill();
-    ctx.beginPath();ctx.moveTo(p.x,p.y+2*hh-ht);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x+w,p.y+hh-ht);ctx.closePath();ctx.fillStyle=darken(color,.15);ctx.fill();
-  }
-}
+// =====================================================================
+// SIMULATION
+// =====================================================================
+function count(type,running){return machines.filter(m=>m.type===type&&(!running||!m.broken)).length}
+function speedOf(m){let s=1+.25*(m.level-1);s*=1+.05*Math.min(3,count('bay',1));
+ if(count('boiler',1)&&['prep','dye','finish'].includes(m.def.zone))s*=1.15;
+ if(m.type==='jet')s*=1+.1*Math.min(2,count('chem',1));return s}
+function pendingQty(t){return G.orders.filter(o=>o.type===t).reduce((a,o)=>a+o.qty,0)}
+function missing(m){const d=m.def;if(d.stenter)return G.inv.dyed>=1||G.inv.printed>=1?'':'dyed or printed fabric';
+ for(const k in d.need)if(G.inv[k]<d.need[k])return MAT[k];
+ for(const k in d.out)if(CAP[k]&&G.inv[k]>=CAP[k])return 'space ('+MAT[k]+' store full)';return ''}
+function tryStart(m){if(missing(m))return false;const d=m.def;
+ if(d.stenter){const pr=G.inv.printed>=1&&(G.inv.dyed<1||pendingQty('fp')-G.inv.fp>=pendingQty('fd')-G.inv.fd);m.lot=pr?'printed':'dyed';G.inv[m.lot]--;return true}
+ for(const k in d.need)G.inv[k]=+(G.inv[k]-d.need[k]).toFixed(3);return true}
+function finish(m){const d=m.def;if(d.stenter)G.inv[m.lot==='printed'?'fp':'fd']++;else for(const k in d.out)G.inv[k]+=d.out[k];m.produced++}
+function sim(dt){
+ // operators go to production machines in build order
+ let free=G.workers;for(const m of machines){if(m.def.util){m.worker=true;continue}m.worker=free>0&&!m.broken;if(m.worker)free--}
+ for(const m of machines){const d=m.def;
+  if(d.util){m.running=!m.broken;m.status=m.broken?'Broken':'Running';continue}
+  if(m.broken){m.running=false;m.status='Broken — repair it';continue}
+  if(!m.worker){m.running=false;m.status='No operator';continue}
+  if(!m.hold){if(tryStart(m))m.hold=true;else{m.running=false;m.status='Waiting for '+missing(m);continue}}
+  m.running=true;m.status='Running';m.progress+=dt*speedOf(m);
+  if(m.progress>=d.time){m.progress=0;m.hold=false;finish(m)}}
+ G.dayT+=dt;if(G.dayT>=MONTH){G.dayT-=MONTH;monthTick()}}
+function monthTick(){G.month++;
+ let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const wages=G.workers*600,int=Math.round(G.loan*.01),cost=Math.round(up+wages+int);G.money-=cost;
+ for(const m of machines)if(!m.def.util&&!m.broken&&Math.random()<(G.research.lean?.012:.025)){m.broken=true;toast('⚠️ '+m.name+' broke down — click it to repair')}
+ G.greige=Math.round(Math.max(200,Math.min(320,G.greige+(Math.random()*40-20))));
+ const want=G.research.market?.8:.55;for(let i=0;i<2;i++)if(G.orders.length<6&&Math.random()<want)newOrder();
+ G.orders=G.orders.filter(o=>{if(o.due<G.month){G.rep=Math.max(0,G.rep-6);toast('Order #'+o.id+' missed — reputation fell');return false}return true});
+ G.rep=Math.min(100,G.rep+count('qc',1));if(!count('etp',1))G.rep=Math.min(70,G.rep);
+ G.hist.push({m:G.month,cost});if(G.hist.length>24)G.hist.shift();
+ if(G.money<0)toast('⚠️ Negative cash — deliver orders, sell stock or take a loan');save(true);renderTab()}
+function newOrder(){const printing=machines.some(m=>m.def.out&&m.def.out.printed);const type=printing&&Math.random()<.55?'fp':'fd';
+ const exp=G.research.export&&count('etp',1)&&Math.random()<.35;const qty=4+Math.floor(Math.random()*13);let unit=(type==='fp'?1400:900)*(.9+Math.random()*.3)*(.8+G.rep/250);if(exp)unit*=1.5;if(count('qc',1))unit*=1.05;
+ G.orders.push({id:G.nextOrder++,type,qty,reward:Math.round(qty*unit/10)*10,due:G.month+3+Math.floor(Math.random()*3),exp})}
+function deliver(id){const o=G.orders.find(q=>q.id===id);if(!o||G.inv[o.type]<o.qty)return;G.inv[o.type]-=o.qty;G.money+=o.reward;G.revenue+=o.reward;G.rep=Math.min(count('etp',1)?100:70,G.rep+(o.exp?5:3));G.orders=G.orders.filter(q=>q!==o);toast('📦 Order #'+o.id+' delivered — '+fmt(o.reward))}
 
-function getFloorColor(c,r){
-  // Zone-based coloring
-  for(let z of ZONES){if(c>=z.x&&c<z.x+z.w&&r>=z.y&&r<z.y+z.h)return z.color;}
-  let v=((c*7+r*13)%4)*2;return`rgb(${38+v},${48+v},${36+v})`;
-}
+// =====================================================================
+// CAMERA, INPUT, SELECTION
+// =====================================================================
+const bar=$('bar');const cur={t:new T.Vector3(5,0,-2),r:170,th:.62,ph:.92},goal={t:cur.t.clone(),r:cur.r,th:cur.th,ph:cur.ph};let viewIdx=0;
+function go(i){viewIdx=i;const v=VIEWS[i];goal.t.set(...v[1]);goal.r=v[2];goal.th=v[3];goal.ph=v[4];[...bar.children].forEach((b,k)=>b.classList.toggle('on',k==i));refreshInfo()}
+VIEWS.forEach((v,i)=>{const b=document.createElement('button');b.textContent=v[0];b.onclick=()=>go(i);bar.appendChild(b)});
+function viewForZone(z){const map={prep:1,lab:2,dye:2,kitchen:3,engrave:4,rotary:5,trolley:6,flat:7,finish:8};return map[z]==null?0:map[z]}
+const ray=new T.Raycaster(),ndc=new T.Vector2(),floorP=new T.Plane(new T.Vector3(0,1,0),0);
+function setNdc(e){const r=R.domElement.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(ndc,C)}
+function floorHit(e){setNdc(e);const p=new T.Vector3();return ray.ray.intersectPlane(floorP,p)?p:null}
+function pick(e){setNdc(e);const hits=ray.intersectObjects(machines.map(m=>m.g),true);for(const h of hits){const id=h.object.userData.mid;if(id)return machines.find(m=>m.id===id)}return null}
+const snap=v=>Math.round(v);
+// placement ghost
+let tool=null,ghost=null,gRot=0,gPos=null;
+function setTool(k){if(ghost){S.remove(ghost);ghost=null}tool=k;gPos=null;
+ if(k){select(null);const def=DEF[k];const{outer}=buildModel(def);outer.traverse(q=>{if(q.isMesh){q.material=ghostMat;q.castShadow=false}});outer.visible=false;ghost=outer;S.add(ghost);go(viewForZone(def.zone))}
+ renderTab();refreshInfo()}
+function moveGhost(e){if(!ghost)return;const p=floorHit(e);if(!p){ghost.visible=false;return}gPos=[snap(p.x),snap(p.z)];ghost.visible=true;ghost.position.set(gPos[0],0,gPos[1]);ghost.rotation.y=gRot*PI/2;
+ const err=rectOK(DEF[tool],gPos[0],gPos[1],gRot,null),cash=G.money>=DEF[tool].cost;ghostMat.color.set(!err&&cash?0x4ade80:0xff5050);$('st').textContent=err||(cash?'Click to build · R rotates · Esc cancels':'Not enough cash')}
+function placeGhost(){if(!tool||!gPos)return;const def=DEF[tool],err=rectOK(def,gPos[0],gPos[1],gRot,null);if(err){toast(err);return}if(G.money<def.cost){toast('Not enough cash');return}
+ G.money-=def.cost;const m=addMachine(tool,gPos[0],gPos[1],gRot);syncTrolleys();toast(def.icon+' '+m.name+' built for '+fmt(def.cost));if(!def.util&&machines.filter(q=>!q.def.util).length>G.workers)toast('Hire an operator so the new '+def.name+' can run');}
+// selection visuals
+let sel=null;const hl=new T.Box3Helper(new T.Box3(),0xf2b134);hl.visible=false;hl.material.depthTest=false;hl.renderOrder=9;S.add(hl);
+const ring=new T.Mesh(new T.RingGeometry(.9,1,48),new T.MeshBasicMaterial({color:0xf2b134,transparent:true,opacity:.85,side:2,depthTest:false}));ring.rotation.x=-PI/2;ring.visible=false;ring.renderOrder=9;S.add(ring);
+function syncHL(){if(!sel){hl.visible=ring.visible=false;return}const lv=sel.lab.visible;sel.lab.visible=false;const b=new T.Box3().setFromObject(sel.g);sel.lab.visible=lv;hl.box.copy(b);hl.visible=true;const c=b.getCenter(new T.Vector3()),s=b.getSize(new T.Vector3());ring.visible=true;ring.position.set(c.x,.08,c.z);const r=Math.hypot(s.x,s.z)/2*1.05;ring.scale.set(r,r,1)}
+function select(m){sel=m;syncHL();buildEditor();refreshInfo()}
+// pointer handling: orbit, pan, place, select, drag-move
+let down=null,dragM=null,dragOK=true;
+R.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+R.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,b:e.button,shift:e.shiftKey,moved:false};
+ if(e.button===0&&!tool&&sel){const m=pick(e);if(m===sel){const p=floorHit(e);dragM={m,ox:p?p.x-m.x:0,oz:p?p.z-m.z:0,x0:m.x,z0:m.z}}}
+ R.domElement.setPointerCapture(e.pointerId)});
+R.domElement.addEventListener('pointermove',e=>{moveGhost(e);if(!down)return;const dx=e.clientX-down.lx,dy=e.clientY-down.ly;down.lx=e.clientX;down.ly=e.clientY;
+ if(Math.abs(e.clientX-down.x)+Math.abs(e.clientY-down.y)>5)down.moved=true;if(!down.moved)return;
+ if(dragM){const p=floorHit(e);if(!p)return;const nx=snap(p.x-dragM.ox),nz=snap(p.z-dragM.oz),err=rectOK(sel.def,nx,nz,sel.rot,sel);dragOK=!err;sel.g.position.set(nx,0,nz);sel._nx=nx;sel._nz=nz;ring.material.color.set(err?0xff5050:0xf2b134);$('st').textContent=err||'Release to move here';syncHL();return}
+ if(down.b===2||down.shift){const f=new T.Vector3(),rgt=new T.Vector3();C.getWorldDirection(f);f.y=0;f.normalize();rgt.crossVectors(f,new T.Vector3(0,1,0));const k=goal.r*.0016;goal.t.addScaledVector(rgt,-dx*k).addScaledVector(f,dy*k)}
+ else{goal.th-=dx*.006;goal.ph=Math.min(1.45,Math.max(.2,goal.ph-dy*.005))}});
+R.domElement.addEventListener('pointerup',e=>{if(!down)return;const click=!down.moved,b=down.b;
+ if(dragM){if(down.moved){if(dragOK){sel.x=sel._nx;sel.z=sel._nz;toast(sel.name+' moved')}else{sel.g.position.set(dragM.x0,0,dragM.z0);toast('Cannot move there')}ring.material.color.set(0xf2b134);syncHL();buildEditor()}dragM=null}
+ if(click&&b===0){if(tool)placeGhost();else{const m=pick(e);if(m||!sel)select(m);else select(null)}}
+ if(click&&b===2&&tool)setTool(null);down=null});
+R.domElement.addEventListener('wheel',e=>{e.preventDefault();goal.r=Math.min(260,Math.max(8,goal.r*(1+e.deltaY*.001)))},{passive:false});
+$('zi').onclick=()=>goal.r=Math.max(8,goal.r*.8);$('zo').onclick=()=>goal.r=Math.min(260,goal.r*1.25);
+$('pp').onclick=()=>{G.paused=!G.paused;$('pp').textContent=G.paused?'▶':'❚❚'};
+$('spd').onclick=()=>{G.speed=G.speed>=4?1:G.speed*2;$('spd').textContent=G.speed+'×'};
+let showLabels=true;$('lbl').onclick=()=>{showLabels=!showLabels;machines.forEach(m=>m.lab.visible=showLabels);$('lbl').style.opacity=showLabels?1:.5};
+function tryMove(m,nx,nz,rot){const err=rectOK(m.def,nx,nz,rot,m);if(err){toast(err);return false}m.x=nx;m.z=nz;m.rot=rot;m.g.position.set(nx,0,nz);m.g.rotation.y=rot*PI/2;syncHL();buildEditor();return true}
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.key;
+ if(k==='Escape'){if(tool)setTool(null);else select(null)}
+ else if(k==='r'||k==='R'){if(tool){gRot=(gRot+1)%4;if(ghost)ghost.rotation.y=gRot*PI/2}else if(sel)tryMove(sel,sel.x,sel.z,(sel.rot+1)%4)}
+ else if(k===' '){e.preventDefault();$('pp').click()}
+ else if(sel&&k.startsWith('Arrow')){e.preventDefault();const d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[k];tryMove(sel,sel.x+d[0],sel.z+d[1],sel.rot)}
+ else if(sel&&(k==='Delete'||k==='Backspace')){sellMachine(sel)}});
 
-// ---- DRAWING ----
-function drawBuilding(b){
-  let def=MACH[b.type];if(!def)return;
-  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
-    let ht=def.utility?10:def.isPath?1:7;
-    drawTile(b.col+dc,b.row+dr,def.color,ht);
-  }
-  let cx=b.col+def.w/2,cy=b.row+def.h/2,p=toScreen(cx,cy);
-  let ht=def.utility?10:def.isPath?1:7;
-  let sz=Math.max(12,18*G.zoom);
-  ctx.font=sz+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(def.icon,p.x,p.y-ht*G.zoom-2);
-  // Progress bar
-  if(b.progress>0&&def.time&&!def.utility&&!def.isPath){
-    let bw=def.w*HW*G.zoom*1.2,bh=4*G.zoom;
-    let bx=p.x-bw/2,by=p.y-ht*G.zoom-sz/2-6*G.zoom;
-    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(bx,by,bw,bh);
-    ctx.fillStyle=b.hasWorker?'#4ade80':'#f2b134';
-    ctx.fillRect(bx,by,bw*(b.progress/def.time),bh);
-  }
-  // Worker indicator
-  if(!def.isPath&&!def.utility&&G.zoom>0.5){
-    ctx.font='bold '+Math.max(7,9*G.zoom)+'px sans-serif';
-    ctx.fillStyle=b.hasWorker?'#4ade80':'#ff6b6b';
-    ctx.fillText(b.hasWorker?'👷':'⚠️ NO WORKER',p.x,p.y+HH*G.zoom*def.h*0.3);
-  }
-}
+// =====================================================================
+// MACHINE EDITOR (property window)
+// =====================================================================
+const PAL=['#c8503c','#d98b2b','#e3c23a','#5f9e4a','#2f8f8a','#3c78b8','#6a5fb0','#b4558f','#e8e8e4','#8c96a0','#3b4450','#1a1f26'];
+const pe=$('pe');
+function sellMachine(m){const v=Math.round(m.def.cost*.4*(1+.5*(m.level-1)));G.money+=v;toast(m.name+' sold for '+fmt(v));removeMachine(m);syncTrolleys()}
+function upCost(m){return Math.round(m.def.cost*.5*m.level)}
+function repCost(m){return Math.round(m.def.cost*.1)}
+function buildEditor(){if(!sel){pe.style.display='none';return}const m=sel,d=m.def,[w,dd]=dims(d,m.rot);pe.style.display='block';
+ pe.innerHTML=`<h3><input id="peN" value="${m.name.replace(/"/g,'&quot;')}"><button id="peX">✕</button></h3><div class="b">
+ <div class="dim">${d.icon} ${d.name} · ${ZONES[d.zone]?ZONES[d.zone].name:'Any department'}</div>
+ <div class="dim">Footprint ${w} × ${dd} m · height ${(d.h||0).toFixed(1)} m</div>
+ <div class="dim" id="peS"></div>
+ <div class="sec">Layout</div>
+ <label><span>X (m)</span><input type="number" id="peXv" step="1" value="${m.x}"></label>
+ <label><span>Z (m)</span><input type="number" id="peZv" step="1" value="${m.z}"></label>
+ <div class="row"><button id="peR">⟳ Rotate 90°</button><button id="peF">🎯 Focus</button></div>
+ <div class="sec">Colour</div><div class="row">${PAL.map(c=>`<button class="sw" style="background:${c}" data-c="${c}"></button>`).join('')}<input type="color" id="peC" value="${m.col||'#3c78b8'}"><button id="peU">Reset</button></div>
+ <div class="sec">Operations</div><div class="row">
+ ${d.util?'':`<button id="peUp" ${m.level>=3||G.money<upCost(m)?'disabled':''}>⬆ Upgrade L${m.level+1} ${m.level>=3?'(max)':fmt(upCost(m))}</button>`}
+ ${m.broken?`<button id="peRp" ${G.money<repCost(m)?'disabled':''}>🔧 Repair ${fmt(repCost(m))}</button>`:''}
+ <button id="peCl" ${G.money<d.cost?'disabled':''}>⧉ Clone ${fmt(d.cost)}</button>
+ <button id="peSl">💰 Sell ${fmt(d.cost*.4*(1+.5*(m.level-1)))}</button></div>
+ <div class="dim" style="margin-top:8px">Drag the machine to move it · R rotates · arrow keys nudge 1 m · Del sells · Esc closes</div></div>`;
+ $('peX').onclick=()=>select(null);$('peN').onchange=e=>{m.name=e.target.value;m.lk=null};
+ $('peXv').onchange=e=>tryMove(m,snap(+e.target.value),m.z,m.rot);$('peZv').onchange=e=>tryMove(m,m.x,snap(+e.target.value),m.rot);
+ $('peR').onclick=()=>tryMove(m,m.x,m.z,(m.rot+1)%4);$('peF').onclick=()=>{goal.t.set(m.x,1.5,m.z);goal.r=Math.max(22,Math.max(w,dd)*2.4)};
+ pe.querySelectorAll('.sw').forEach(b=>b.onclick=()=>paint(m,b.dataset.c));$('peC').oninput=e=>paint(m,e.target.value);$('peU').onclick=()=>unpaint(m);
+ if($('peUp'))$('peUp').onclick=()=>{const c=upCost(m);if(G.money<c)return;G.money-=c;m.level++;toast(m.name+' upgraded to level '+m.level+' (+25% speed)');buildEditor()};
+ if($('peRp'))$('peRp').onclick=()=>{const c=repCost(m);if(G.money<c)return;G.money-=c;m.broken=false;toast(m.name+' repaired');buildEditor()};
+ $('peCl').onclick=()=>{if(G.money<d.cost)return;for(let r=1;r<40;r++)for(const[a,b]of[[r,0],[-r,0],[0,r],[0,-r],[r,r],[-r,-r]]){const nx=m.x+a*2,nz=m.z+b*2;if(!rectOK(d,nx,nz,m.rot,null)){G.money-=d.cost;const c=addMachine(m.type,nx,nz,m.rot,{col:m.col});syncTrolleys();select(c);toast('Cloned '+d.name);return}}toast('No free space for a clone in '+(ZONES[d.zone]?ZONES[d.zone].name:'the plant'))};
+ $('peSl').onclick=()=>sellMachine(m);refreshEditorStatus()}
+function refreshEditorStatus(){if(!sel||!$('peS'))return;const m=sel;$('peS').innerHTML=`Status: <b class="${m.running?'good':'bad'}">${m.status}</b><br>Level ${m.level} · produced ${m.produced} lots${m.def.time?' · '+Math.round(m.progress/m.def.time*100)+'%':''}`}
 
-function drawHover(){
-  if(!G.hover)return;let{col,row}=G.hover;if(col<0||row<0||col>=COLS||row>=ROWS)return;
-  if(G.tool){let def=MACH[G.tool];if(def){let can=canPlace(G.tool,col,row);
-    for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
-      let p=toScreen(col+dc,row+dr),w=HW*G.zoom,hh=HH*G.zoom;
-      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x-w,p.y+hh);ctx.closePath();
-      ctx.fillStyle=can?'rgba(74,222,128,0.3)':'rgba(255,80,80,0.3)';ctx.fill();ctx.strokeStyle=can?'#4ade80':'#ff5050';ctx.lineWidth=1.5;ctx.stroke();
-    }
-  }}else if(G.demolish){
-    let p=toScreen(col,row),w=HW*G.zoom,hh=HH*G.zoom;
-    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x+w,p.y+hh);ctx.lineTo(p.x,p.y+2*hh);ctx.lineTo(p.x-w,p.y+hh);ctx.closePath();
-    ctx.fillStyle='rgba(255,80,80,0.3)';ctx.fill();
-  }
-}
+// =====================================================================
+// UI: sidebar tabs, info panel, toast
+// =====================================================================
+let tab='build',toastT=0;
+function toast(t){const el=$('msg');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),3500)}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{tab=t.dataset.t;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));renderTab()});
+function stockHTML(){return '<div class="card stock">'+Object.keys(MAT).map(k=>MAT[k]+': <b>'+(+G.inv[k].toFixed(1))+'</b>').join(' · ')+'</div>'}
+function renderTab(){const tc=$('tc');let h='';
+ if(tab==='build'){h+=stockHTML();for(const[z,list]of DEPTS){const Z=ZONES[z];h+=`<div class="ct"><i style="background:#${Z?Z.c.toString(16).padStart(6,'0'):'888'}"></i>${Z?Z.name:'Utilities (any department)'}</div>`;
+  for(const k of list){const d=DEF[k],ok=unlocked(k);h+=`<button class="ib${tool===k?' on':''}" data-a="tool" data-k="${k}" ${ok?'':'disabled'}><span class="ic">${d.icon}</span><span><div class="nm">${d.name}${ok?'':' 🔒'}</div><div class="dt">${fmt(d.cost)} · ${fmt(d.up)}/mo${d.time?' · '+recipeText(d):''}${ok?'':' · research first'}</div></span></button>`}}}
+ else if(tab==='orders'){h+=stockHTML();if(!G.orders.length)h+='<div class="card">No open orders. New buyers write in at the start of each month.</div>';
+  for(const o of G.orders){const ok=G.inv[o.type]>=o.qty;h+=`<div class="card">${o.exp?'🌍 Export':'📦 Domestic'} order #${o.id}<br><b>${o.qty} lots ${MAT[o.type]}</b> — ${fmt(o.reward)}<br><span class="${o.due-G.month<=1?'bad':''}">Due ${monthName(o.due)}</span> · you have <span class="${ok?'good':'bad'}">${Math.floor(G.inv[o.type])}/${o.qty}</span><div class="row"><button data-a="deliver" data-k="${o.id}" ${ok?'':'disabled'}>Deliver</button></div></div>`}}
+ else if(tab==='research'){for(const r of RESEARCH){const done=G.research[r.id],can=!r.req||G.research[r.req];h+=`<div class="card${done?' done':''}">${r.icon} <b>${r.name}</b>${done?' ✅':''}<br><span style="color:var(--mut)">${r.desc}</span>${done?'':`<div class="row"><button data-a="res" data-k="${r.id}" ${can&&G.money>=r.cost?'':'disabled'}>Research ${fmt(r.cost)}</button>${can?'':' <span class="bad">needs '+RESEARCH.find(x=>x.id===r.req).name+'</span>'}</div>`}</div>`}}
+ else{let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const busy=machines.filter(m=>!m.def.util&&m.worker).length,need=machines.filter(m=>!m.def.util).length;
+  h+=stockHTML()+`<div class="card"><b>Monthly running cost</b><br>Machine upkeep ${fmt(up)}<br>Wages ${G.workers} × $600 = ${fmt(G.workers*600)}<br>Loan interest ${fmt(G.loan*.01)}<br>Total revenue so far <span class="good">${fmt(G.revenue)}</span></div>
+  <div class="card"><b>Operators</b> — ${busy} working, ${need} machines need one<div class="row"><button data-a="hire" ${G.money<1500?'disabled':''}>👷 Hire ($1,500)</button><button data-a="fire" ${G.workers<1?'disabled':''}>Dismiss</button></div></div>
+  <div class="card"><b>Greige market</b> — ${fmt(G.greige)} per lot<div class="row"><button data-a="buy" data-k="10" ${G.money<G.greige*10?'disabled':''}>Buy 10 lots ${fmt(G.greige*10)}</button><button data-a="buy" data-k="30" ${G.money<G.greige*30?'disabled':''}>Buy 30</button></div></div>
+  <div class="card"><b>Spot market</b> (lower than order prices)<div class="row"><button data-a="spot" data-k="fd" ${G.inv.fd<1?'disabled':''}>Sell finished dyed $550/lot</button><button data-a="spot" data-k="fp" ${G.inv.fp<1?'disabled':''}>Sell finished printed $800/lot</button></div></div>
+  <div class="card"><b>Bank loan</b> ${fmt(G.loan)} of $100,000 · 1% a month<div class="row"><button data-a="borrow" ${G.loan>=100000?'disabled':''}>Borrow $10,000</button><button data-a="repay" ${G.loan<10000||G.money<10000?'disabled':''}>Repay $10,000</button></div></div>
+  <div class="card"><b>Game</b><div class="row"><button data-a="save">💾 Save</button><button data-a="load">📂 Load</button><button data-a="new">🔄 New plant</button></div></div>`}
+ tc.innerHTML=h}
+function recipeText(d){if(d.stenter)return 'dyed/printed → finished';const i=Object.keys(d.need).map(k=>MAT[k]).join(' + ');return (i?i+' → ':'makes ')+Object.keys(d.out).map(k=>MAT[k]).join('')}
+$('tc').addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,k=b.dataset.k;
+ if(a==='tool'){setTool(tool===k?null:k);return}
+ if(a==='deliver')deliver(+k);
+ if(a==='res'){const r=RESEARCH.find(x=>x.id===k);if(G.money>=r.cost){G.money-=r.cost;G.research[k]=1;toast('🔬 '+r.name+' researched')}}
+ if(a==='hire'&&G.money>=1500){G.money-=1500;G.workers++;toast('Operator hired ('+G.workers+')')}
+ if(a==='fire'&&G.workers>0){G.workers--;toast('Operator dismissed')}
+ if(a==='buy'){const n=+k,c=G.greige*n;if(G.money>=c){G.money-=c;G.inv.greige+=n;toast('Bought '+n+' lots of greige for '+fmt(c))}}
+ if(a==='spot'){const n=Math.floor(G.inv[k]),v=n*(k==='fp'?800:550);G.inv[k]-=n;G.money+=v;G.revenue+=v;toast('Sold '+n+' lots on the spot market for '+fmt(v))}
+ if(a==='borrow'){G.loan+=10000;G.money+=10000}
+ if(a==='repay'&&G.money>=10000){G.loan-=10000;G.money-=10000}
+ if(a==='save')save();if(a==='load')load();if(a==='new'&&confirm('Start a new plant? Unsaved progress is lost.'))newGame();
+ renderTab();refreshStats()});
+function monthName(m){return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m%12]+' Y'+(Math.floor(m/12)+1)}
+function refreshStats(){$('sCash').textContent=fmt(G.money);$('sCash').style.color=G.money<0?'#ff7b7b':'#4ade80';const need=machines.filter(m=>!m.def.util).length;$('sWk').textContent=G.workers+' / '+need;$('sWk').style.color=G.workers<need?'#ff7b7b':'';$('sRep').textContent=Math.round(G.rep)+'/100';$('sMon').textContent=monthName(G.month)}
+function refreshInfo(){const h=$('info').querySelector('h2'),p=$('info').querySelector('p');
+ if(tool){const d=DEF[tool];h.textContent='Placing: '+d.name;p.textContent=d.desc+' Place it in '+(ZONES[d.zone]?ZONES[d.zone].name:'any department')+'.'}
+ else if(sel){h.textContent=sel.def.icon+' '+sel.name;p.textContent=sel.def.desc}
+ else{const v=VIEWS[viewIdx];h.textContent=v[0];p.textContent=v[5]}}
+function refreshLabels(){for(const m of machines){const c=m.status==='Running'?'#4ade80':m.status.startsWith('Waiting')?'#fcd34d':'#ff7b7b';setLabel(m,m.name.length>26?m.name.slice(0,25)+'…':m.name,c)}}
+function refreshStatusLine(){if(tool)return;if(sel){$('st').textContent=sel.running&&sel.A.status?sel.A.status:sel.status;return}
+ const v=VIEWS[viewIdx][0];if(v==='Flatbed & digital'){const f=machines.find(m=>m.type==='flatbed'&&m.running);$('st').textContent=f?f.A.status:''}else $('st').textContent=''}
 
-function draw(){
-  ctx.fillStyle='#1a2218';ctx.fillRect(0,0,C.width,C.height);
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    let t=G.grid[r][c];
-    if(t.terrain===TERRAIN.PATH) drawTile(c,r,'#706858',1);
-    else drawTile(c,r,getFloorColor(c,r),0);
-  }
-  // Zone labels
-  if(G.zoom>0.4){for(let z of ZONES){
-    let p=toScreen(z.x+z.w/2,z.y+1);
-    ctx.font='bold '+Math.max(8,11*G.zoom)+'px sans-serif';ctx.textAlign='center';
-    ctx.fillStyle='rgba(242,177,52,0.5)';ctx.fillText(z.name,p.x,p.y);
-  }}
-  // Buildings sorted by depth
-  let sorted=[...G.buildings].sort((a,b)=>(a.col+a.row)-(b.col+b.row));
-  sorted.forEach(b=>drawBuilding(b));
-  // Entrance
-  let ep=toScreen(25.5,49);
-  drawTile(25,49,'#f2b134',5);drawTile(26,49,'#f2b134',5);
-  ctx.font='bold '+Math.max(9,12*G.zoom)+'px sans-serif';ctx.textAlign='center';ctx.fillStyle='#1a1a2e';
-  ctx.fillText('GATE',ep.x,ep.y-5*G.zoom);
-  drawHover();
-}
+// =====================================================================
+// SAVE / LOAD / NEW GAME
+// =====================================================================
+const KEY='textileTycoon3D_v1';
+function save(quiet){try{localStorage.setItem(KEY,JSON.stringify({G,ms:machines.map(m=>({t:m.type,x:m.x,z:m.z,r:m.rot,n:m.name,l:m.level,p:m.produced,b:m.broken,c:m.col}))}));if(!quiet)toast('💾 Plant saved')}catch(e){}}
+function clearPlant(){machines.slice().forEach(removeMachine);machines=[];MID=0}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d){toast('No saved plant yet');return false}clearPlant();G=Object.assign(freshState(),d.G);G.paused=false;
+ d.ms.forEach(q=>{if(DEF[q.t])addMachine(q.t,q.x,q.z,q.r,{name:q.n,level:q.l,produced:q.p,broken:q.b,col:q.c})});syncTrolleys();renderTab();refreshStats();toast('📂 Plant loaded — '+monthName(G.month));return true}catch(e){return false}}
+const STARTER=[['desize',50,-8,0],['bleach',50,5,0],['station',-55,-39,0],['station',-48,-39,0],['chem',-47,-22,0],['jet',-21,-35,0],['kitchen',-42,-8,0],['coater',-33,24,1],['baby',-2,-6,0],['stenter',26,-32,0],['bay',-52,12,1],['boiler',60,-26,0]];
+function newGame(){clearPlant();G=freshState();G.paused=false;STARTER.forEach(s=>addMachine(s[1]?s[0]:s[0],s[1],s[2],s[3]));syncTrolleys();newOrder();newOrder();select(null);renderTab();refreshStats();go(0);toast('Welcome! Your starter plant is running — buy greige, deliver orders and expand.')}
 
-// ---- BUILDING ----
-function isPath(c,r){return c>=0&&r>=0&&c<COLS&&r<ROWS&&G.grid[r][c].terrain===TERRAIN.PATH;}
+// =====================================================================
+// RENDERING (realism pass + HQ post-processing, as in the layout)
+// =====================================================================
+function upgrade(){const e=new T.Scene();e.add(new T.Mesh(new T.BoxGeometry(120,70,120),new T.MeshBasicMaterial({color:0x8d9bab,side:1})));
+ const sb=(w,h,x,y,z,c,rx,ry)=>{const m=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({color:c,side:2}));m.position.set(x,y,z);m.rotation.set(rx||0,ry||0,0);e.add(m)};
+ sb(80,50,0,34,0,0xffffff,PI/2);sb(30,25,-55,20,0,0xfff0dd,0,PI/2);sb(30,25,55,20,10,0xdde8ff,0,PI/2);sb(60,20,0,12,-58,0xeaf0f6);
+ S.environment=new T.PMREMGenerator(R).fromScene(e,.03).texture;
+ for(const m of [ST,STd,NI,GR])if(!m.bumpMap){m.bumpMap=brushed;m.bumpScale=.35}}
+let composer=null,useFX=true;
+function initFX(){try{const rt=new T.WebGLMultisampleRenderTarget(VW()*DPR,VH()*DPR,{format:T.RGBAFormat,type:T.HalfFloatType});
+ composer=new T.EffectComposer(R,rt);composer.setPixelRatio(DPR);composer.setSize(VW(),VH());composer.addPass(new T.RenderPass(S,C));
+ const ssao=new T.SSAOPass(S,C,VW(),VH());ssao.kernelRadius=3;ssao.minDistance=.0012;ssao.maxDistance=.014;composer.addPass(ssao);
+ composer.addPass(new T.UnrealBloomPass(new T.Vector2(VW()/2,VH()/2),.22,.55,1.6));
+ composer.addPass(new T.ShaderPass({uniforms:{tDiffuse:{value:null}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader:'uniform sampler2D tDiffuse;varying vec2 vUv;vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}void main(){vec3 c=texture2D(tDiffuse,vUv).rgb;c=aces(c*.8);c=pow(c,vec3(1./2.2));c=mix(vec3(dot(c,vec3(.299,.587,.114))),c,1.12);c=(c-.5)*1.06+.5;vec2 d=vUv-.5;c*=1.-dot(d,d)*.35;gl_FragColor=vec4(c,1.);}'}));
+ }catch(err){console.warn('FX off',err);composer=null}}
+function applyFX(){if(useFX&&composer){R.toneMapping=T.NoToneMapping;R.outputEncoding=T.LinearEncoding;S.background=new T.Color(BGC).convertSRGBToLinear();S.fog.color.copy(S.background)}
+ else{R.toneMapping=T.ACESFilmicToneMapping;R.outputEncoding=T.sRGBEncoding;S.background=new T.Color(BGC);S.fog.color.set(BGC)}$('fx').style.opacity=useFX?1:.5}
+$('fx').onclick=()=>{useFX=!useFX;applyFX()};
+function onResize(){R.setSize(VW(),VH());C.aspect=VW()/VH();C.updateProjectionMatrix();if(composer)composer.setSize(VW(),VH())}
+addEventListener('resize',onResize);
 
-function adjacentPath(col,row,w,h){
-  for(let dc=0;dc<w;dc++){if(row>0&&isPath(col+dc,row-1))return true;if(row+h<ROWS&&isPath(col+dc,row+h))return true;}
-  for(let dr=0;dr<h;dr++){if(col>0&&isPath(col-1,row+dr))return true;if(col+w<COLS&&isPath(col+w,row+dr))return true;}
-  return false;
-}
-
-function canPlace(type,col,row){
-  let def=MACH[type];if(!def)return false;
-  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
-    let c2=col+dc,r2=row+dr;if(c2<0||r2<0||c2>=COLS||r2>=ROWS)return false;
-    let t=G.grid[r2][c2];
-    if(def.isPath){if(t.building)return false;}
-    else{if(t.terrain===TERRAIN.PATH||t.building)return false;}
-  }
-  if(!def.isPath)if(!adjacentPath(col,row,def.w,def.h))return false;
-  return true;
-}
-
-function placeBuild(type,col,row){
-  let def=MACH[type];if(!def)return;
-  if(G.money<def.cost){showMsg('Not enough money!');return;}
-  if(!canPlace(type,col,row)){showMsg('Cannot build there — needs adjacent aisle');return;}
-  G.money-=def.cost;
-  let b={type,col,row,id:G.buildId++,progress:0,income:0,hasWorker:false,level:1,produced:0,broken:false};
-  for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
-    let t=G.grid[row+dr][col+dc];
-    if(def.isPath){t.terrain=TERRAIN.PATH;}else{t.building=b.id;}
-  }
-  if(!def.isPath)G.buildings.push(b);
-  showMsg(def.name+' built for $'+def.cost.toLocaleString());
-}
-
-function demolishAt(col,row){
-  if(col<0||row<0||col>=COLS||row>=ROWS)return;
-  let t=G.grid[row][col];
-  if(t.building){
-    let b=G.buildings.find(x=>x.id===t.building);if(!b)return;
-    let def=MACH[b.type],refund=Math.floor(def.cost*0.25);G.money+=refund;
-    for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++)G.grid[b.row+dr][b.col+dc].building=null;
-    G.buildings=G.buildings.filter(x=>x.id!==b.id);
-    showMsg(def.name+' demolished. $'+refund+' refunded.');
-  }else if(t.terrain===TERRAIN.PATH){t.terrain=TERRAIN.FLOOR;G.money+=5;}
-}
-
-// ---- SIMULATION ----
-function assignWorkers(){
-  let avail=G.workers;
-  // Prioritize by: utility first, then production machines
-  let sorted=[...G.buildings].sort((a,b)=>{
-    let da=MACH[a.type],db=MACH[b.type];
-    let pa=da.utility?0:da.generator?1:2,pb=db.utility?0:db.generator?1:2;
-    return pa-pb;
-  });
-  for(let b of G.buildings)b.hasWorker=false;
-  for(let b of sorted){
-    let def=MACH[b.type];if(def.isPath)continue;
-    if(avail>0){b.hasWorker=true;avail--;}
-  }
-}
-
-function hasUtility(type){return G.buildings.some(b=>b.type===type&&b.hasWorker);}
-
-function updateMachines(dt){
-  assignWorkers();
-  let boilerBonus=hasUtility('boiler')?0.15:0;
-  let labBonus=hasUtility('lab');
-  let trolleyBonus=hasUtility('trolley_store')?0.10:0;
-
-  for(let b of G.buildings){
-    let def=MACH[b.type];
-    if(!def||def.isPath||def.utility||b.broken||!b.hasWorker)continue;
-
-    // Check input availability
-    if(def.generator){
-      // Generators (dispensing, colour mixer, coater, etc) produce from nothing
-    }else{
-      if(!def.input||G.inv[def.input]<=0)continue;
-      if(def.needs&&G.inv[def.needs]<=0)continue;
-      if(def.needs_screen&&G.inv.screens<=0)continue;
-    }
-
-    let speed=(1+boilerBonus+trolleyBonus)*(1+0.2*(b.level-1));
-    b.progress+=dt*speed;
-
-    if(b.progress>=def.time){
-      b.progress=0;
-      // Consume inputs
-      if(!def.generator){
-        if(def.input)G.inv[def.input]--;
-        if(def.needs)G.inv[def.needs]--;
-        if(def.needs_screen)G.inv.screens=Math.max(0,G.inv.screens-0.1); // screens last ~10 uses
-      }
-      // Produce output
-      if(def.output){
-        G.inv[def.output]++;
-        b.produced++;
-      }
-    }
-  }
-}
-
-function updateEconomy(dt){
-  G.day+=dt*0.05;
-  if(G.day<30)return;
-  G.day=0;G.month++;
-
-  // Upkeep
-  let upkeep=0;
-  for(let b of G.buildings){let d=MACH[b.type];if(d)upkeep+=d.upkeep;}
-  // Wages
-  let wages=G.workers*200;
-  // Loan interest
-  let interest=Math.floor(G.loan*0.04/12);
-  let total=upkeep+wages+interest;
-  G.money-=total;
-
-  // Greige price fluctuation
-  G.greige_price=Math.max(30,Math.min(80,G.greige_price+(Math.random()*10-5)));
-
-  // Random breakdowns
-  for(let b of G.buildings){
-    let def=MACH[b.type];
-    if(def&&!def.utility&&!def.isPath&&!b.broken&&Math.random()<0.02){
-      b.broken=true;showMsg(def.name+' broke down! Click it to repair.');
-    }
-  }
-
-  // New orders
-  if(G.orders.length<6&&Math.random()<(G.research.marketing1?0.7:0.5)){
-    generateOrder();
-  }
-
-  // Expire orders
-  G.orders=G.orders.filter(o=>{
-    if(o.deadline<G.month){G.reputation=Math.max(0,G.reputation-5);showMsg('Order #'+o.id+' expired!');return false;}
-    return true;
-  });
-
-  // Reputation
-  let hasEtp=hasUtility('etp');
-  let hasLab=hasUtility('lab');
-  if(hasLab)G.reputation=Math.min(100,G.reputation+1);
-  if(!hasEtp&&G.reputation>70)G.reputation=70;
-
-  if(G.money<0)showMsg('⚠️ Negative cash! Fulfill orders or sell fabric.');
-}
-
-function generateOrder(){
-  let types=['dyed','printed','finished'];
-  let type=types[Math.floor(Math.random()*types.length)];
-  let isExport=G.research.marketing2&&Math.random()<0.3;
-  if(isExport&&!hasUtility('etp'))isExport=false;
-  let qty=5+Math.floor(Math.random()*20);
-  let basePrice=type==='finished'?120:type==='printed'?90:60;
-  if(isExport)basePrice*=1.5;
-  let reward=Math.round(qty*basePrice*(0.9+Math.random()*0.3));
-  G.orders.push({
-    id:G.nextOrderId++,type,qty,reward,
-    deadline:G.month+3+Math.floor(Math.random()*3),
-    isExport,
-    label:(isExport?'🌍 Export: ':'📦 ')+ qty+' '+MAT_NAMES[type]
-  });
-}
-
-function fulfillOrder(id){
-  let o=G.orders.find(x=>x.id===id);if(!o)return;
-  if(G.inv[o.type]<o.qty){showMsg('Not enough '+MAT_NAMES[o.type]+'!');return;}
-  G.inv[o.type]-=o.qty;G.money+=o.reward;G.totalRevenue+=o.reward;
-  G.reputation=Math.min(100,G.reputation+(o.isExport?5:3));
-  G.orders=G.orders.filter(x=>x.id!==id);
-  showMsg('Order #'+o.id+' delivered! Earned $'+o.reward.toLocaleString());
-}
-
-// ---- UPDATE ----
-function update(dt){
-  if(G.speed===0)return;
-  let gdt=dt*G.speed*3;G.tick+=gdt;
-  updateMachines(gdt);updateEconomy(gdt);
-  if(G.msgTimer>0){G.msgTimer-=dt;if(G.msgTimer<=0)document.getElementById('msg').classList.remove('show');}
-}
-
-// ---- UI ----
-function showMsg(t){document.getElementById('msg').textContent=t;document.getElementById('msg').classList.add('show');G.msgTimer=3.5;}
-function monthName(){let m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return m[G.month%12]+' Y'+(Math.floor(G.month/12)+1);}
-function updateStats(){
-  document.getElementById('s-money').textContent='$'+Math.round(G.money).toLocaleString();
-  document.getElementById('s-money').style.color=G.money<0?'#ff5050':'#4ade80';
-  document.getElementById('s-workers').textContent=G.workers;
-  document.getElementById('s-rep').textContent=G.reputation+'/100';
-  document.getElementById('s-month').textContent=monthName();
-}
-
-function isUnlocked(type){let d=MACH[type];if(!d)return false;if(d.unlocked)return true;if(d.research)return!!G.research[d.research];return false;}
-
-function renderBuildTab(){
-  let cats={
-    'Preparatory':['singeing','desizing','bleaching','mercerizer'],
-    'Dyeing':['dispensing','jet_dye','jigger','padder'],
-    'Colour Kitchen':['colour_mixer','auto_dispenser'],
-    'Printing':['rotary_baby','rotary_prod','flatbed','digital'],
-    'Screen Engraving':['coater','laser_engraver','developer'],
-    'Finishing':['stenter','stenter_print','calender','sanforizer'],
-    'Infrastructure':['boiler','etp','lab','trolley_store'],
-    'Aisles':['path'],
-  };
-  let html='<div class="info-panel" style="font-size:11px;line-height:1.5;margin-bottom:8px">';
-  html+='<b>Inventory</b><br>';
-  for(let k of Object.keys(G.inv)){
-    if(G.inv[k]>0||['greige','dyed','printed','finished','dye_paste','print_paste','screens'].includes(k))
-      html+=MAT_NAMES[k]+': <b>'+Math.round(G.inv[k])+'</b> · ';
-  }
-  html+='</div>';
-  for(let cat in cats){
-    html+='<div class="cat"><div class="cat-title">'+cat+'</div>';
-    for(let type of cats[cat]){
-      let def=MACH[type],ok=isUnlocked(type),active=G.tool===type;
-      html+='<button class="item-btn'+(active?' active':'')+(ok?'':' locked')+'" data-type="'+type+'" '+(ok?'':'disabled')+'>';
-      html+='<div class="ic">'+def.icon+'</div><div class="inf"><div class="nm">'+def.name+(ok?'':' 🔒')+'</div>';
-      html+='<div class="det">$'+def.cost.toLocaleString();
-      if(def.input)html+=' · '+MAT_NAMES[def.input]+'→'+MAT_NAMES[def.output];
-      else if(def.generator&&def.output)html+=' · Produces '+MAT_NAMES[def.output];
-      html+='</div></div></button>';
-    }
-    html+='</div>';
-  }
-  return html;
-}
-
-function renderOrdersTab(){
-  if(!G.orders.length) return '<div style="padding:12px;color:#5a7a94;font-size:12px">No active orders. Keep producing fabric — orders arrive each month.</div>';
-  let html='';
-  for(let o of G.orders){
-    let canFulfill=G.inv[o.type]>=o.qty;
-    html+='<div class="order-card">';
-    html+='<div>'+o.label+'</div>';
-    html+='<div>Reward: <b>$'+o.reward.toLocaleString()+'</b></div>';
-    html+='<div style="color:#5a7a94;font-size:11px">Due: '+(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][o.deadline%12])+' Y'+(Math.floor(o.deadline/12)+1)+'</div>';
-    html+='<div style="font-size:11px">You have: <b style="color:'+(canFulfill?'#4ade80':'#ff6b6b')+'">'+Math.round(G.inv[o.type])+'/'+o.qty+'</b></div>';
-    html+='<button class="fulfill-btn" data-oid="'+o.id+'" '+(canFulfill?'':'disabled')+'>📦 Deliver</button>';
-    html+='</div>';
-  }
-  return html;
-}
-
-function renderResearchTab(){
-  let html='';
-  for(let r of RESEARCH){
-    let done=!!G.research[r.id],avail=!r.requires||!!G.research[r.requires];
-    html+='<div class="r-item'+(done?' done':'')+'">';
-    html+='<div class="rn">'+r.icon+' '+r.name+(done?' ✅':'')+'</div>';
-    html+='<div class="rd">'+r.desc+'</div>';
-    if(!done){
-      html+='<div class="rc">$'+r.cost.toLocaleString()+(r.requires&&!G.research[r.requires]?' (needs '+RESEARCH.find(x=>x.id===r.requires).name+')':'')+'</div>';
-      html+='<button class="r-btn" data-rid="'+r.id+'" '+(avail&&G.money>=r.cost?'':'disabled')+'>Research</button>';
-    }
-    html+='</div>';
-  }
-  return html;
-}
-
-function renderFinanceTab(){
-  let upkeep=0;for(let b of G.buildings){let d=MACH[b.type];if(d)upkeep+=d.upkeep;}
-  let wages=G.workers*200;
-  let machCount={};G.buildings.forEach(b=>{let d=MACH[b.type];if(d&&!d.isPath){machCount[d.cat]=(machCount[d.cat]||0)+1;}});
-  let html='<div class="info-panel"><b>💰 Monthly Summary</b><div style="margin-top:6px;line-height:1.8">';
-  html+='Total Revenue: <b style="color:#4ade80">$'+G.totalRevenue.toLocaleString()+'</b><br>';
-  html+='Monthly Upkeep: <b style="color:#ff7070">-$'+upkeep+'/mo</b><br>';
-  html+='Monthly Wages ('+G.workers+' workers): <b style="color:#ff7070">-$'+wages+'/mo</b><br>';
-  html+='Greige Price: <b>$'+Math.round(G.greige_price)+'/bale</b><br>';
-  html+='Reputation: <b style="color:#f2b134">'+G.reputation+'/100</b><br>';
-  html+='Loan: <b>$'+G.loan.toLocaleString()+'</b> / $'+G.maxLoan.toLocaleString()+'<br>';
-  html+='<hr style="border-color:#1e2a38;margin:6px 0">';
-  html+='<b>Machines by Department:</b><br>';
-  for(let cat of ['prep','dye','kitchen','print','engrave','finish','infra']){
-    let names={prep:'Preparatory',dye:'Dyeing',kitchen:'Colour Kitchen',print:'Printing',engrave:'Screen Engr.',finish:'Finishing',infra:'Infrastructure'};
-    html+=names[cat]+': <b>'+(machCount[cat]||0)+'</b><br>';
-  }
-  html+='</div>';
-  html+='<button class="r-btn" id="btn-borrow" '+(G.loan>=G.maxLoan?'disabled':'')+'>Borrow $5,000</button> ';
-  html+='<button class="r-btn" id="btn-repay" '+(G.loan<=0||G.money<5000?'disabled':'')+'>Repay $5,000</button>';
-  html+='</div>';
-  return html;
-}
-
-let currentTab='build';
-function renderTab(){
-  let el=document.getElementById('tab-content');
-  switch(currentTab){
-    case'build':el.innerHTML=renderBuildTab();bindBuild();break;
-    case'orders':el.innerHTML=renderOrdersTab();bindOrders();break;
-    case'research':el.innerHTML=renderResearchTab();bindResearch();break;
-    case'finance':el.innerHTML=renderFinanceTab();bindFinance();break;
-  }
-}
-
-function bindBuild(){document.querySelectorAll('.item-btn').forEach(btn=>{btn.addEventListener('click',()=>{
-  G.demolish=false;document.getElementById('btn-demolish').classList.remove('active');
-  G.tool=G.tool===btn.dataset.type?null:btn.dataset.type;renderTab();});});}
-
-function bindOrders(){document.querySelectorAll('.fulfill-btn').forEach(btn=>{btn.addEventListener('click',()=>{
-  fulfillOrder(+btn.dataset.oid);renderTab();updateStats();});});}
-
-function bindResearch(){document.querySelectorAll('.r-btn[data-rid]').forEach(btn=>{btn.addEventListener('click',()=>{
-  let rid=btn.dataset.rid,r=RESEARCH.find(x=>x.id===rid);
-  if(r&&G.money>=r.cost&&!G.research[rid]){G.money-=r.cost;G.research[rid]=true;showMsg(r.name+' researched!');renderTab();updateStats();}});});}
-
-function bindFinance(){
-  let bb=document.getElementById('btn-borrow'),br=document.getElementById('btn-repay');
-  if(bb)bb.addEventListener('click',()=>{if(G.loan<G.maxLoan){G.loan+=5000;G.money+=5000;showMsg('Borrowed $5,000');renderTab();updateStats();}});
-  if(br)br.addEventListener('click',()=>{if(G.loan>0&&G.money>=5000){G.loan-=5000;G.money-=5000;showMsg('Repaid $5,000');renderTab();updateStats();}});
-}
-
-// Tab switching
-document.querySelectorAll('.tab').forEach(tab=>{tab.addEventListener('click',()=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));tab.classList.add('active');
-  currentTab=tab.dataset.tab;renderTab();});});
-
-// HUD
-document.getElementById('btn-pause').addEventListener('click',()=>{G.speed=G.speed===0?1:0;document.getElementById('btn-pause').textContent=G.speed===0?'▶ Play':'⏸ Pause';updSpd();});
-document.getElementById('btn-speed').addEventListener('click',()=>{if(G.speed===0)G.speed=1;else if(G.speed===1)G.speed=2;else if(G.speed===2)G.speed=3;else G.speed=1;updSpd();});
-document.getElementById('btn-demolish').addEventListener('click',()=>{G.demolish=!G.demolish;if(G.demolish)G.tool=null;document.getElementById('btn-demolish').classList.toggle('active',G.demolish);renderTab();});
-document.getElementById('btn-buy-greige').addEventListener('click',()=>{
-  let cost=Math.round(10*G.greige_price);
-  if(G.money<cost){showMsg('Not enough money for greige fabric!');return;}
-  G.money-=cost;G.inv.greige+=10;showMsg('Bought 10 greige bales for $'+cost);updateStats();if(currentTab==='build')renderTab();
-});
-document.getElementById('btn-hire').addEventListener('click',()=>{
-  if(G.money<1200){showMsg('Not enough to hire!');return;}
-  G.money-=1200;G.workers++;showMsg('Worker hired. Total: '+G.workers);updateStats();
-});
-
-function updSpd(){document.getElementById('speed-display').textContent=G.speed===0?'⏸ Paused':G.speed===1?'▶ Normal':G.speed===2?'▶▶ Fast':'▶▶▶ Ultra';}
-
-// ---- INPUT ----
-let isDragging=false,mouseDown=false;
-C.addEventListener('mousedown',e=>{mouseDown=true;isDragging=false;G.dragStart={x:e.clientX,y:e.clientY};G.dragCam={x:G.cameraX,y:G.cameraY};});
-C.addEventListener('mousemove',e=>{
-  let rect=C.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;G.hover=fromScreen(mx,my);
-  if(mouseDown){let dx=e.clientX-G.dragStart.x,dy=e.clientY-G.dragStart.y;if(Math.abs(dx)>3||Math.abs(dy)>3)isDragging=true;if(isDragging){G.cameraX=G.dragCam.x+dx;G.cameraY=G.dragCam.y+dy;}}
-  if(mouseDown&&!isDragging&&G.tool&&MACH[G.tool]&&MACH[G.tool].isPath){let{col,row}=fromScreen(mx,my);if(col>=0&&row>=0&&col<COLS&&row<ROWS)placeBuild(G.tool,col,row);}
-});
-C.addEventListener('mouseup',e=>{
-  if(!isDragging){let rect=C.getBoundingClientRect(),{col,row}=fromScreen(e.clientX-rect.left,e.clientY-rect.top);
-    if(col>=0&&row>=0&&col<COLS&&row<ROWS){
-      if(G.demolish)demolishAt(col,row);
-      else if(G.tool)placeBuild(G.tool,col,row);
-      else{
-        // Click on a building to see details / repair
-        let t=G.grid[row][col];
-        if(t.building){
-          let b=G.buildings.find(x=>x.id===t.building);
-          if(b&&b.broken){
-            let def=MACH[b.type],cost=Math.floor(def.cost*0.15);
-            if(G.money>=cost){G.money-=cost;b.broken=false;b.progress=0;showMsg(def.name+' repaired for $'+cost);updateStats();}
-            else showMsg('Need $'+cost+' to repair.');
-          }
-        }
-      }
-    }}
-  mouseDown=false;isDragging=false;
-});
-C.addEventListener('wheel',e=>{e.preventDefault();let old=G.zoom;G.zoom*=e.deltaY>0?0.92:1.08;G.zoom=Math.max(0.25,Math.min(2.5,G.zoom));
-  let rect=C.getBoundingClientRect(),mx=e.clientX-rect.left-C.width/2,my=e.clientY-rect.top-C.height/2;
-  G.cameraX=mx-(mx-G.cameraX)*(G.zoom/old);G.cameraY=my-(my-G.cameraY)*(G.zoom/old);},{passive:false});
-
-// Tooltip
-C.addEventListener('mousemove',e=>{
-  let rect=C.getBoundingClientRect(),{col,row}=fromScreen(e.clientX-rect.left,e.clientY-rect.top),tip=document.getElementById('tooltip');
-  if(col>=0&&row>=0&&col<COLS&&row<ROWS){let t=G.grid[row][col];
-    if(t.building){let b=G.buildings.find(x=>x.id===t.building);if(b){let def=MACH[b.type];
-      let html='<b>'+def.icon+' '+def.name+'</b>';
-      if(b.broken)html+=' <span style="color:#ff6b6b">[BROKEN — click to repair]</span>';
-      html+='<br>'+def.desc;
-      if(def.input)html+='<br>In: '+MAT_NAMES[def.input]+(def.needs?' + '+MAT_NAMES[def.needs]:'')+(def.needs_screen?' + Screen':'')+' → '+MAT_NAMES[def.output];
-      if(def.generator&&def.output)html+='<br>Produces: '+MAT_NAMES[def.output];
-      html+='<br>Produced: '+b.produced+' · Upkeep: $'+def.upkeep+'/mo';
-      html+='<br>Worker: '+(b.hasWorker?'✅ Assigned':'❌ None');
-      tip.innerHTML=html;tip.style.display='block';tip.style.left=(e.clientX-rect.left+15)+'px';tip.style.top=(e.clientY-rect.top+15)+'px';return;}}}
-  tip.style.display='none';
-});
-
-// Keyboard
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){G.tool=null;G.demolish=false;renderTab();}
-  if(e.key===' '||e.key==='p'){e.preventDefault();G.speed=G.speed===0?1:0;document.getElementById('btn-pause').textContent=G.speed===0?'▶ Play':'⏸ Pause';updSpd();}
-  if(e.key==='s'&&e.ctrlKey){e.preventDefault();saveGame();}
-});
-
-// ---- SAVE/LOAD ----
-function saveGame(){
-  let save={money:G.money,workers:G.workers,month:G.month,day:G.day,reputation:G.reputation,totalRevenue:G.totalRevenue,
-    research:G.research,loan:G.loan,inv:G.inv,orders:G.orders,nextOrderId:G.nextOrderId,
-    greige_price:G.greige_price,buildId:G.buildId,
-    buildings:G.buildings.map(b=>({type:b.type,col:b.col,row:b.row,income:b.income,produced:b.produced,level:b.level,broken:b.broken})),
-    grid:G.grid.map(row=>row.map(t=>({terrain:t.terrain})))};
-  localStorage.setItem('textileTycoonV2',JSON.stringify(save));showMsg('Game saved!');
-}
-
-function loadSave(){
-  let s=localStorage.getItem('textileTycoonV2');if(!s)return false;
-  try{
-    let save=JSON.parse(s);
-    Object.assign(G,{money:save.money,workers:save.workers,month:save.month,day:save.day,reputation:save.reputation,
-      totalRevenue:save.totalRevenue,research:save.research||{},loan:save.loan||0,inv:save.inv,
-      orders:save.orders||[],nextOrderId:save.nextOrderId||1,greige_price:save.greige_price||50,buildId:save.buildId||0});
-    G.grid=[];for(let r=0;r<ROWS;r++){G.grid[r]=[];for(let c=0;c<COLS;c++)G.grid[r][c]={terrain:save.grid[r][c].terrain,building:null};}
-    G.buildings=[];
-    for(let bs of save.buildings){
-      let def=MACH[bs.type];if(!def)continue;
-      let b={type:bs.type,col:bs.col,row:bs.row,id:G.buildId++,progress:0,income:bs.income||0,
-        hasWorker:false,level:bs.level||1,produced:bs.produced||0,broken:bs.broken||false};
-      G.buildings.push(b);
-      for(let dr=0;dr<def.h;dr++)for(let dc=0;dc<def.w;dc++){
-        if(!def.isPath)G.grid[b.row+dr][b.col+dc].building=b.id;
-      }
-    }
-    showMsg('Game loaded!');return true;
-  }catch(e){return false;}
-}
-
-// ---- INIT & LOOP ----
-function init(){
-  resize();initGrid();
-  let ep=toIso(26,42);G.cameraX=-ep.x*G.zoom;G.cameraY=-ep.y*G.zoom+C.height*0.25;
-  renderTab();updateStats();
-  if(!loadSave()){
-    showMsg('Welcome to Textile Tycoon! Build aisles from the gate, then place processing machines beside them.');
-  }
-}
-
-let last=performance.now();
-function gameLoop(now){
-  let dt=Math.min(0.1,(now-last)/1000);last=now;
-  update(dt);draw();
-  if(Math.floor(now/500)!==Math.floor((now-dt*1000)/500)){updateStats();if(currentTab!=='build')renderTab();
-    else{let el=document.querySelector('.info-panel');if(el){
-      let html='<b>Inventory</b><br>';
-      for(let k of Object.keys(G.inv)){if(G.inv[k]>0||['greige','dyed','printed','finished','dye_paste','print_paste','screens'].includes(k))html+=MAT_NAMES[k]+': <b>'+Math.round(G.inv[k])+'</b> · ';}
-      el.innerHTML=html;
-    }}
-  }
-  requestAnimationFrame(gameLoop);
-}
-init();requestAnimationFrame(gameLoop);
+// =====================================================================
+// START
+// =====================================================================
+G=freshState();
+upgrade();initFX();applyFX();
+if(!load())newGame();
+$('ld').remove();onResize();
+let last=performance.now(),TT=0,uiLast=0;
+(function loop(n){requestAnimationFrame(loop);const rdt=Math.min(.05,(n-last)/1000);last=n;const gdt=G.paused?0:rdt*G.speed;
+ if(gdt>0){sim(gdt);TT+=gdt;for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
+ if(dragM||sel)syncHL();
+ cur.t.lerp(goal.t,.06);for(const k of['r','th','ph'])cur[k]+=(goal[k]-cur[k])*.06;
+ C.position.set(cur.t.x+cur.r*Math.sin(cur.ph)*Math.sin(cur.th),cur.t.y+cur.r*Math.cos(cur.ph),cur.t.z+cur.r*Math.sin(cur.ph)*Math.cos(cur.th));C.lookAt(cur.t);
+ if(n-uiLast>400){uiLast=n;refreshStats();refreshLabels();refreshStatusLine();refreshEditorStatus();if(tab==='orders'||tab==='finance'){if(!$('tc').matches(':hover'))renderTab()}}
+ if(useFX&&composer)composer.render();else R.render(S,C)})(last);
 </script>
 </body>
 </html>
