@@ -99,6 +99,8 @@ button.on{background:var(--acc);color:#1b1b1b}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/BufferGeometryUtils.js"></script>
 <script>
 // =====================================================================
 // TEXTILE TYCOON 3D — built on the Integrated Textile Plant 3D layout
@@ -301,17 +303,17 @@ function qcLab(g,A){box(6,3,4,WH,0,1.5,0,g);box(6.1,.2,4.1,BL,0,3.1,0,g);box(4.6
 // =====================================================================
 // PLANT LAYOUT: slab, departments, floor grid
 // =====================================================================
-const X0=-60,X1=70,Z0=-44,Z1=40;
+const X0=-60,X1=90,Z0=-44,Z1=40;
 const ZONES={
  lab:{name:'Lab / dispensing',r:[-60,-33,-44,-16],c:0xf0e385,tc:'#fde68a'},
  dye:{name:'Dyeing hall',r:[-33,-4,-44,-16],c:0x9ad8c9,tc:'#67e8f9'},
- finish:{name:'Finishing dept',r:[-4,70,-44,-16],c:0xb4d0e8,tc:'#fca5a5'},
+ finish:{name:'Finishing dept',r:[-4,90,-44,-16],c:0xb4d0e8,tc:'#fca5a5'},
  kitchen:{name:'Colour kitchen',r:[-60,-20,-16,0],c:0xd8c4f0,tc:'#d8b4fe'},
  trolley:{name:'Trolley storage',r:[-60,-45,0,40],c:0xb4dca8,tc:'#fdba74'},
  engrave:{name:'Screen engraving',r:[-45,-20,0,40],c:0xc9b6e8,tc:'#f0abfc'},
  rotary:{name:'Rotary printing',r:[-20,30,-16,40],c:0xf0c895,tc:'#fcd34d'},
- prep:{name:'Preparatory',r:[30,70,-16,14],c:0xe8d8b0,tc:'#bef264'},
- flat:{name:'Flatbed & digital',r:[30,70,14,40],c:0xe8b0d4,tc:'#7dd3fc'}};
+ prep:{name:'Preparatory',r:[30,90,-16,14],c:0xe8d8b0,tc:'#bef264'},
+ flat:{name:'Flatbed & digital',r:[30,90,14,40],c:0xe8b0d4,tc:'#7dd3fc'}};
 function zone(x0,x1,z0,z1,col,y,h){const w=x1-x0,d=z1-z0;const t=concrete.clone();t.needsUpdate=true;t.repeat.set(w/6,d/6);const m=new T.Mesh(new T.BoxGeometry(w,h,d),new T.MeshStandardMaterial({color:col,map:t,roughness:.42,metalness:0,bumpMap:t,bumpScale:.3}));m.position.set((x0+x1)/2,y+h/2,(z0+z1)/2);m.receiveShadow=true;m.raycast=()=>{};S.add(m);return m}
 {const base=new T.Mesh(new T.BoxGeometry(X1-X0,1,Z1-Z0),mat(0xb9a58f,{roughness:.7}));base.position.set((X0+X1)/2,-.5,(Z0+Z1)/2);base.receiveShadow=true;S.add(base);
  zone(X0,X1,Z0,Z1,0xc9d3dc,0,.05);for(const k in ZONES){const z=ZONES[k],r=z.r;zone(r[0]+.15,r[1]-.15,r[2]+.15,r[3]-.15,z.c,.05,.04);tag(z.name,(r[0]+r[1])/2,9,(r[2]+r[3])/2,z.tc)}
@@ -330,26 +332,29 @@ function zone(x0,x1,z0,z1,col,y,h){const w=x1-x0,d=z1-z0;const t=concrete.clone(
 // =====================================================================
 const MAT={greige:'Greige',scoured:'Scoured',rfd:'Ready-for-dyeing/printing',dyed:'Dyed',printed:'Printed',fd:'Finished dyed',fp:'Finished printed',recipe:'Dye recipes',paste:'Print paste',screens:'Engraved screens'};
 const CAP={recipe:30,paste:30,screens:20,scoured:60,rfd:60,dyed:60,printed:60};
+// Machine models: Fable Machine Models library (detailed GLB models), plus the A-frame trolley and ETP clarifier / DAF unit
+// from the Machine Spares Explorer catalogue. Each def keeps a procedural builder (b) as a fallback if its model can't load.
 const DEF={
- desize:{name:'Desizing & scouring range',zone:'prep',icon:'🧪',cost:9000,up:450,time:6,need:{greige:1},out:{scoured:1},b:(g,A)=>prepRange(g,A,{L:12,n:4,acc:mat(0x4a8a6a,{roughness:.45}),kind:'grey',inCol:0xe6e0cf,outCol:0xefe8d6}),desc:'Washer boxes with squeeze rollers remove size and natural impurities from greige cloth.'},
- bleach:{name:'Continuous bleaching range',zone:'prep',icon:'⚪',cost:14000,up:650,time:6,need:{scoured:1},out:{rfd:1},b:(g,A)=>prepRange(g,A,{L:14,n:3,jbox:1,acc:mat(0x7090b0,{roughness:.45}),kind:'dyed',col:'#f6f8fa',inCol:0xefe8d6,outCol:0xf8fafc}),desc:'Peroxide padder, J-box steamer and washers give PFD (ready for dyeing/printing) fabric.'},
- station:{name:'Dispensing station',zone:'lab',icon:'⚖️',cost:4000,up:180,time:5,need:{},out:{recipe:1},b:(g,A)=>station(g,A),desc:'Green-frame weighing table with moving gantry: weighs dyes and chemicals into recipe jars for the jets.'},
- chem:{name:'Chemical tank platform',zone:'lab',icon:'🛢️',cost:6000,up:150,util:1,b:(g,A)=>platform(g,A,3,0x2f6fb5),desc:'Stirred stainless tanks on a blue frame. Each platform speeds up all jets by 10% (max 2).'},
- jet:{name:'HT jet dyeing machine',zone:'dye',icon:'🌀',cost:16000,up:850,time:12,need:{rfd:1,recipe:1},out:{dyed:1},sc:[.86,.65,.65],b:(g,A)=>jet(g,A),desc:'High-temperature jet vessel with dosing cabinet. Dyes fabric in rope form at 130 °C. Needs PFD fabric + a dye recipe.'},
- kitchen:{name:'Colour kitchen',zone:'kitchen',icon:'🎨',cost:7000,up:300,time:6,need:{},out:{paste:1},b:(g,A)=>kitchen(g,A),desc:'Tank platform, drum conveyor and dispenser: mixes print paste for the print lines.'},
- autokit:{name:'Auto colour dispenser',zone:'kitchen',icon:'🤖',cost:18000,up:600,time:3,need:{},out:{paste:1},research:'autokit',b:(g,A)=>autoKitchen(g,A),desc:'Computer-controlled dispensing with canister carousel and stirrers — twice as fast as a manual kitchen.'},
- coater:{name:'Screen coating & developing',zone:'engrave',icon:'🖌️',cost:6000,up:250,time:14,need:{},out:{screens:1},b:(g,A)=>coaterSet(g,A),desc:'Auto coater, developing tank and curing oven: makes rotary/flat screens the slow way.'},
- laser:{name:'Laser engraver',zone:'engrave',icon:'⚡',cost:20000,up:700,time:6,need:{},out:{screens:1},research:'laser',b:(g,A)=>engraver(g,A),desc:'Laser exposure of coated screens straight from the design file. Fast and precise.'},
- baby:{name:'Baby rotary (sampling)',zone:'rotary',icon:'🖨️',cost:14000,up:650,time:13,need:{rfd:1,paste:1,screens:.25},out:{printed:1},b:(g,A)=>rotary(g,A,{len:10,heads:4,dry:0,sp:2.4}),desc:'4-head sampling rotary. Needs PFD fabric, print paste and screens.'},
- rotary:{name:'Rotary print line',zone:'rotary',icon:'🖨️',cost:45000,up:1700,time:5,need:{rfd:1,paste:1,screens:.1},out:{printed:1},research:'rotary',b:(g,A)=>rotary(g,A,{len:16,heads:8,dry:12,dryCol:mat(0xf5d90a,{roughness:.35}),sp:3.2}),desc:'8-head production rotary: blanket, spinning screens, colour drums, hot-air dryer and plaiter.'},
- flatbed:{name:'Flatbed screen printer',zone:'flat',icon:'📋',cost:38000,up:1400,time:8,need:{rfd:1,paste:1,screens:.15},out:{printed:1},research:'flatbed',b:(g,A)=>flatbed(g,A),desc:'Stop-and-go flatbed: hydraulic screen lift, squeegee carriages and a panelled dryer.'},
- digital:{name:'Digital inkjet printer',zone:'flat',icon:'💻',cost:30000,up:1100,time:7,need:{rfd:1,paste:.25},out:{printed:1},research:'digital',sc:[.75,.75,.75],b:(g,A)=>digital(g,A,9.5,'SAPPHIRE 41b'),desc:'Inkjet printer with moving carriage — no screens, very little paste.'},
- stenter:{name:'Finishing stenter',zone:'finish',icon:'📏',cost:30000,up:1300,time:7,stenter:1,need:{},out:{},b:(g,A)=>stenter(g,A,16,6),desc:'6-chamber stenter with chimneys, inlet frame and batchers. Finishes dyed or printed fabric for delivery.'},
- bay:{name:'Trolley storage bay',zone:'trolley',icon:'🛒',cost:3000,up:40,util:1,b:(g,A)=>trolleyBay(g,A),desc:'A-frame batching trolleys buffer WIP between departments. +5% plant speed each (max 3) and more trolleys on the aisle.'},
- boiler:{name:'Steam boiler',zone:'any',icon:'♨️',cost:12000,up:500,util:1,b:(g,A)=>boiler(g,A),desc:'Supplies steam to preparatory, dyeing and finishing. +15% speed on those machines.'},
- etp:{name:'Effluent treatment plant',zone:'any',icon:'♻️',cost:16000,up:600,util:1,research:'etp',b:(g,A)=>etp(g,A),desc:'Clarifiers and aeration tank. Needed for reputation above 70 and for export orders.'},
- qc:{name:'Quality lab',zone:'any',icon:'🔬',cost:7000,up:300,util:1,b:(g,A)=>qcLab(g,A),desc:'Tests fastness, GSM and shrinkage. +1 reputation a month and +5% order value.'}};
-const DEPTS=[['prep',['desize','bleach']],['lab',['station','chem']],['dye',['jet']],['kitchen',['kitchen','autokit']],['engrave',['coater','laser']],['rotary',['baby','rotary']],['flat',['flatbed','digital']],['finish',['stenter']],['trolley',['bay']],['any',['boiler','etp','qc']]];
+ desize:{name:'Gas singeing machine',zone:'prep',icon:'🔥',cost:9000,up:450,time:6,need:{greige:1},out:{scoured:1},glb:'gas_singeing',ph:['Brushing & dust extraction','Burners singeing the face','Quench & cooling','Batching'],b:(g,A)=>prepRange(g,A,{L:12,n:4,acc:mat(0x4a8a6a,{roughness:.45}),kind:'grey',inCol:0xe6e0cf,outCol:0xefe8d6}),desc:'Gas burners singe protruding fibres off greige cloth, then the fabric is quenched and batched for pretreatment.'},
+ bleach:{name:'Desize, scour & bleach range',zone:'prep',icon:'⚪',cost:16000,up:700,time:6,need:{scoured:1},out:{rfd:1},glb:'bleaching_range',ph:['Desize impregnation','Steaming','Hot washing','Peroxide bleaching','Final wash & dry'],b:(g,A)=>prepRange(g,A,{L:14,n:3,jbox:1,acc:mat(0x7090b0,{roughness:.45}),kind:'dyed',col:'#f6f8fa',inCol:0xefe8d6,outCol:0xf8fafc}),desc:'Continuous 2000 mm range: desizing, scouring and peroxide bleaching with steamers and washers. Its output, PFD fabric, feeds dyeing and printing.'},
+ station:{name:'Automatic dye dispensing system',zone:'lab',icon:'⚖️',cost:4500,up:180,time:5,need:{},out:{recipe:1},glb:'lab_dispenser',ph:['Reading recipe','Dosing dye solutions','Weighing check','Recipe ready'],b:(g,A)=>station(g,A),desc:'Automatic dye and chemical dispensing: doses each recipe for the jets and jiggers.'},
+ chem:{name:'Powder dissolving system',zone:'lab',icon:'🛢️',cost:6000,up:150,util:1,glb:'powder_dissolving_system',ph:['Dissolving & stirring'],b:(g,A)=>platform(g,A,3,0x2f6fb5),desc:'Stirred dissolving tanks for dyes and chemicals. Each one speeds up all jets and jiggers by 10% (max 2).'},
+ jet:{name:'HT jet dyeing machine',zone:'dye',icon:'🌀',cost:16000,up:850,time:12,need:{rfd:1,recipe:1},out:{dyed:1},glb:'jet_dyeing',ph:['Loading & filling','Heating to 130 °C','Dyeing at 130 °C','Cooling & rinsing','Unloading'],b:(g,A)=>jet(g,A),desc:'High-temperature soft-flow / jet rope dyeing machine. Needs PFD fabric + a dye recipe.'},
+ jigger:{name:'HTHP jigger',zone:'dye',icon:'🔄',cost:9000,up:450,time:16,need:{rfd:1,recipe:1},out:{dyed:1},glb:'hthp_jigger',ph:['Batching on','Dyeing passes','Rinsing passes','Batching off'],b:(g,A)=>jet(g,A),desc:'High-temperature, high-pressure jigger: open-width dyeing for woven fabric. Cheaper than a jet but slower.'},
+ kitchen:{name:'Colour weighing & recipe station',zone:'kitchen',icon:'🎨',cost:7000,up:300,time:6,need:{},out:{paste:1},glb:'colour_weighing_station',ph:['Weighing thickener','Adding colours','Mixing paste'],b:(g,A)=>kitchen(g,A),desc:'Colour kitchen weighing and recipe station: mixes print paste for the print lines.'},
+ autokit:{name:'Auto print paste dispensing (24 colours)',zone:'kitchen',icon:'🤖',cost:18000,up:600,time:3,need:{},out:{paste:1},research:'autokit',glb:'auto_colour_dispensing',ph:['Recipe from formula','Dispensing 24 colours','Stirring','Bucket ready'],b:(g,A)=>autoKitchen(g,A),desc:'Automatic print paste dispensing with 24 colour lines — twice as fast as manual weighing.'},
+ coater:{name:'Rotary screen lacquering machine',zone:'engrave',icon:'🖌️',cost:6000,up:250,time:14,need:{},out:{screens:1},glb:'screen_lacquering_machine',ph:['Degreasing','Ring squeegee coating','Drying','Screen ready'],b:(g,A)=>coaterSet(g,A),desc:'Ring-squeegee coater: lacquers rotary screens with emulsion before exposing.'},
+ laser:{name:'Rotary screen laser engraver',zone:'engrave',icon:'⚡',cost:20000,up:700,time:6,need:{},out:{screens:1},research:'laser',glb:'rotary_screen_engraver',ph:['Loading design file','Laser engraving','Unloading screen'],b:(g,A)=>engraver(g,A),desc:'3.2 m laser / inkjet CTS engraver: exposes screens straight from the design file.'},
+ baby:{name:'Baby rotary sampling machine',zone:'rotary',icon:'🖨️',cost:14000,up:650,time:13,need:{rfd:1,paste:1,screens:.25},out:{printed:1},glb:'baby_rotary_sampling_machine',ph:['Fabric on blanket','Printing 2 colours','Drying','Batching'],b:(g,A)=>rotary(g,A,{len:10,heads:4,dry:0,sp:2.4}),desc:'2-colour baby rotary for samples and short runs. Needs PFD fabric, print paste and screens.'},
+ rotary:{name:'Infinium TD rotary, 8 colour',zone:'rotary',icon:'🖨️',cost:45000,up:1700,time:5,need:{rfd:1,paste:1,screens:.1},out:{printed:1},research:'rotary',glb:'infinium_td_8c_gas',ph:['Infeed & gluing to blanket','Printing 8 colours','Gas-fired drying','Plaiting'],b:(g,A)=>rotary(g,A,{len:16,heads:8,dry:12,dryCol:mat(0xf5d90a,{roughness:.35}),sp:3.2}),desc:'Embee Infinium TD 8-colour, 1620 mm rotary printing machine with gas-fired dryer.'},
+ flatbed:{name:'Automatic flatbed screen printer',zone:'flat',icon:'📋',cost:38000,up:1400,time:8,need:{rfd:1,paste:1,screens:.15},out:{printed:1},research:'flatbed',glb:'flatbed_screen_printer',ph:['Blanket advances','Screens lowering','Squeegee stroke','Screens lifting','Drying'],b:(g,A)=>flatbed(g,A),desc:'10-colour, 1800 mm automatic flatbed with stop-and-go blanket and dryer.'},
+ digital:{name:'Wide-format inkjet printer',zone:'flat',icon:'💻',cost:30000,up:1100,time:7,need:{rfd:1,paste:.25},out:{printed:1},research:'digital',glb:'wide_format_printer',ph:['Loading roll','Inkjet passes','Curing','Rewinding'],b:(g,A)=>digital(g,A,9.5,'INKJET'),desc:'3.2 m roll-to-roll inkjet printer — no screens, very little paste.'},
+ stenter:{name:'Stenter, 6 chamber',zone:'finish',icon:'📏',cost:30000,up:1300,time:7,stenter:1,need:{},out:{},glb:'stenter_ekta_6ch',ph:['Padding finish','Pinning on chains','Drying in 6 chambers','Cooling & batching'],b:(g,A)=>stenter(g,A,16,6),desc:'6-chamber pin-cum-clip gas-fired stenter. Finishes dyed or printed fabric for delivery.'},
+ bay:{name:'A-frame trolley bay',zone:'trolley',icon:'🛒',cost:3000,up:40,util:1,glb:[{f:'rect_frame_trolley',x:-1.4,z:-1.3},{f:'rect_frame_trolley',x:1.4,z:-1.3},{f:'rect_frame_trolley',x:-1.4,z:1.3},{f:'rect_frame_trolley',x:1.4,z:1.3}],ph:['WIP buffer: 4 trolleys'],b:(g,A)=>trolleyBay(g,A),desc:'Four A-frame batch trolleys buffer WIP between departments. +5% plant speed each (max 3) and more trolleys on the aisle.'},
+ boiler:{name:'Electric steam boiler',zone:'any',icon:'♨️',cost:12000,up:500,util:1,glb:'electric_steam_boiler',ph:['Steam on line: 10 bar'],b:(g,A)=>boiler(g,A),desc:'500 kg/h steam for preparatory, dyeing and finishing. +15% speed on those machines.'},
+ etp:{name:'Effluent treatment plant',zone:'any',icon:'♻️',cost:16000,up:600,util:1,research:'etp',glb:[{f:'etp_clarifier',x:0,z:0},{f:'daf_unit',x:0,z:9.5}],ph:['Clarifying & flotation'],b:(g,A)=>etp(g,A),desc:'Clarifier and DAF flotation unit. Needed for reputation above 70 and for export orders.'},
+ qc:{name:'Fabric inspection machine',zone:'any',icon:'🔬',cost:7000,up:300,util:1,glb:'inspection_machine',ph:['Inspecting & grading'],b:(g,A)=>qcLab(g,A),desc:'Batch-to-roll inspection: grades every lot. +1 reputation a month and +5% order value.'}};
+const DEPTS=[['prep',['desize','bleach']],['lab',['station','chem']],['dye',['jet','jigger']],['kitchen',['kitchen','autokit']],['engrave',['coater','laser']],['rotary',['baby','rotary']],['flat',['flatbed','digital']],['finish',['stenter']],['trolley',['bay']],['any',['boiler','etp','qc']]];
 const RESEARCH=[
  {id:'rotary',name:'Production rotary',desc:'8-head rotary line with dryer — the volume printer.',cost:20000,icon:'🖨️'},
  {id:'flatbed',name:'Flatbed printing',desc:'Stop-and-go flatbed printer for large repeats.',cost:22000,icon:'📋',req:'rotary'},
@@ -361,15 +366,15 @@ const RESEARCH=[
  {id:'market',name:'Domestic marketing',desc:'More orders arrive each month.',cost:8000,icon:'📰'},
  {id:'lean',name:'Lean maintenance',desc:'−15% machine upkeep and half the breakdowns.',cost:12000,icon:'🔧'}];
 const VIEWS=[
- ['Overview',[5,0,-2],170,.62,.92,'Your integrated plant: preparatory, lab & dispensing, dyeing hall, colour kitchen, screen engraving, rotary printing, flatbed & digital bay, finishing and trolley storage. Pick a machine in Build and place it in its department.'],
- ['Preparatory',[50,2,-1],62,.6,.85,'Greige fabric is desized, scoured and bleached here. Its output, PFD fabric, feeds both dyeing and printing.'],
- ['Dyeing dept',[-34,2,-30],62,.7,.9,'Left room: green-frame dispensing stations with gantries make dye recipes. Right hall: HT jet dyeing machines turn PFD fabric + a recipe into dyed fabric.'],
- ['Colour kitchen',[-40,2,-8],48,.5,.85,'Tank platform with stirrers, drum conveyor and dispensers make the print paste for every print line.'],
- ['Screen engraving',[-32,1.5,20],62,.5,.85,'Coating, developing and laser exposing make the screens the rotary and flatbed lines wear out.'],
- ['Rotary printing',[5,2,12],80,.55,.85,'Baby rotary for samples and production rotary lines: cloth runs on the blanket under spinning screens, then through the dryer to the plaiter.'],
- ['Trolley storage',[-52,1,18],46,.6,.9,'A-frame batching trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
- ['Flatbed & digital',[50,1.5,27],46,.55,.8,'Flatbed line with stop-and-go cycle, and digital printers with moving carriages.'],
- ['Finishing',[30,5,-30],80,.6,.8,'Stenters heat-set, dry and width-control dyed or printed fabric into deliverable finished goods.']];
+ ['Overview',[15,0,-2],190,.62,.92,'Your integrated plant: preparatory, lab & dispensing, dyeing hall, colour kitchen, screen engraving, rotary printing, flatbed & digital bay, finishing and trolley storage. Pick a machine in Build and place it in its department.'],
+ ['Preparatory',[60,2,-1],70,.6,.85,'Gas singeing, then the continuous desize, scour & bleach range. Its output, PFD fabric, feeds both dyeing and printing.'],
+ ['Dyeing dept',[-34,2,-30],62,.7,.9,'Left room: automatic dye dispensing systems and powder dissolving tanks make the recipes. Right hall: HT jets and HTHP jiggers turn PFD fabric + a recipe into dyed fabric.'],
+ ['Colour kitchen',[-40,2,-8],48,.5,.85,'Colour weighing & recipe stations and the 24-colour auto paste dispenser make print paste for every print line.'],
+ ['Screen engraving',[-32,1.5,20],62,.5,.85,'Rotary screen lacquering machines and the laser engraver make the screens the rotary and flatbed lines wear out.'],
+ ['Rotary printing',[5,2,12],80,.55,.85,'Baby rotary for samples and the Embee Infinium TD 8-colour rotary for production, with its gas-fired dryer.'],
+ ['Trolley storage',[-52,1,18],46,.6,.9,'A-frame batch trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
+ ['Flatbed & digital',[60,1.5,27],55,.55,.8,'10-colour automatic flatbed screen printer and wide-format inkjet printers.'],
+ ['Finishing',[40,5,-30],90,.6,.8,'6-chamber pin-cum-clip stenters heat-set, dry and width-control dyed or printed fabric into deliverable finished goods.']];
 
 // =====================================================================
 // GAME STATE
@@ -381,9 +386,22 @@ const fmt=n=>'$'+Math.round(n).toLocaleString();
 const unlocked=k=>{const d=DEF[k];return !d.research||!!G.research[d.research]};
 
 // ---------- building models & placement ----------
-function buildModel(def){const outer=new T.Group(),inner=new T.Group();outer.add(inner);const A=[];def.b(inner,A);if(def.sc)inner.scale.set(...def.sc);
+const MODELS={},MODEL_ERR={};
+function buildModel(def){const outer=new T.Group(),inner=new T.Group();outer.add(inner);const A=[];
+ const parts=def.glb?(typeof def.glb==='string'?[{f:def.glb,x:0,z:0}]:def.glb):[];
+ if(parts.length&&parts.every(p=>MODELS[p.f])){for(const p of parts){const c=MODELS[p.f].clone();c.position.set(p.x||0,0,p.z||0);c.rotation.y=p.ry||0;inner.add(c)}
+  const ph=def.ph||['Running'];A.push((t,dt,m)=>{const f=m&&def.time?m.progress/def.time:(t/20)%1;A.status=ph[Math.min(ph.length-1,Math.floor(f*ph.length))]+(def.time?' · '+Math.round(f*100)+'%':'')})}
+ else{def.b(inner,A);if(def.sc)inner.scale.set(...def.sc)}
  inner.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(inner),c=bb.getCenter(new T.Vector3()),s=bb.getSize(new T.Vector3());
- inner.position.x-=c.x;inner.position.z-=c.z;if(!def.w){def.w=Math.ceil(s.x+.3);def.d=Math.ceil(s.z+.3);def.h=s.y}return{outer,A}}
+ inner.position.x-=c.x;inner.position.z-=c.z;inner.position.y-=Math.min(0,bb.min.y);if(!def.w){def.w=Math.ceil(s.x+.3);def.d=Math.ceil(s.z+.3);def.h=s.y}return{outer,A}}
+// load a library model (base64 gzip GLB) and merge its meshes by material so a plant full of detailed machines stays fast
+async function loadModel(f){const r=await fetch('models/'+f+'.txt');if(!r.ok)throw new Error(f+' missing');const bin=Uint8Array.from(atob((await r.text()).trim()),ch=>ch.charCodeAt(0));
+ const buf=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+ const scene=await new Promise((res,rej)=>new T.GLTFLoader().parse(buf,'',g=>res(g.scene),rej));scene.updateMatrixWorld(true);
+ const groups=new Map();scene.traverse(o=>{if(!o.isMesh||!o.geometry)return;let g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.normal)g.computeVertexNormals();if(g.index)g=g.toNonIndexed();
+  const mt=Array.isArray(o.material)?o.material[0]:o.material,key=mt.uuid+'|'+Object.keys(g.attributes).sort().join(',');if(!groups.has(key))groups.set(key,{mt,gs:[]});groups.get(key).gs.push(g)});
+ const out=new T.Group();for(const{mt,gs}of groups.values()){const mg=T.BufferGeometryUtils.mergeBufferGeometries(gs,false);if(!mg)continue;const m=new T.Mesh(mg,mt);m.castShadow=m.receiveShadow=!mt.transparent;if(mt.transparent)mt.depthWrite=false;out.add(m)}
+ return out}
 function dims(def,rot){if(!def.w)buildModel(def);return rot%2?[def.d,def.w]:[def.w,def.d]}
 function zoneOf(x,z){for(const k in ZONES){const r=ZONES[k].r;if(x>=r[0]&&x<=r[1]&&z>=r[2]&&z<=r[3])return k}return null}
 function rectOK(def,x,z,rot,ignore){const[w,d]=dims(def,rot),a=[x-w/2,x+w/2,z-d/2,z+d/2];
@@ -398,6 +416,7 @@ function addMachine(type,x,z,rot,o){o=o||{};const def=DEF[type];const{outer,A}=b
  const n=machines.filter(q=>q.type===type).length+1;
  const m={id:++MID,type,def,x,z,rot,g:outer,A,mt:Math.random()*20,progress:0,hold:false,worker:false,broken:!!o.broken,level:o.level||1,produced:o.produced||0,col:null,name:o.name||def.name+(n>1?' #'+n:''),status:'',running:false,mats:null};
  outer.traverse(q=>{q.userData.mid=m.id});
+ const bb0=new T.Box3().setFromObject(outer);m.beacon=new T.Group();cyl(.04,.9,STd,0,.45,0,'y',m.beacon,8);m.lamp=sph(.16,mat(0x22c55e,{emissive:0x22c55e,emissiveIntensity:1}),0,1,0,1,1,1,m.beacon);m.beacon.position.set(bb0.max.x-x-.4,bb0.max.y,bb0.min.z-z+.4);m.beacon.traverse(q=>{q.raycast=()=>{}});outer.add(m.beacon);
  m.lab=new T.Sprite(new T.SpriteMaterial({depthTest:false,transparent:true}));m.lab.scale.set(7.2,1.12,1);m.lab.position.set(0,(def.h||4)+1.4,0);m.lab.renderOrder=8;m.lab.raycast=()=>{};m.lab.visible=showLabels;outer.add(m.lab);
  machines.push(m);if(o.col)paint(m,o.col);return m}
 function removeMachine(m){S.remove(m.g);machines=machines.filter(q=>q!==m);if(sel===m)select(null)}
@@ -413,9 +432,9 @@ function unpaint(m){m.col=null;(m.mats||[]).forEach(x=>x.color.copy(x.userData.b
 // ---------- moving trolleys on the main aisle ----------
 const GA=[],trolleys=[];
 function syncTrolleys(){const want=Math.min(6,2+machines.filter(m=>m.type==='bay').length);
- while(trolleys.length<want){const k=trolleys.length;const g=batcher(S,{col:[0x1f6fd0,0xf6c21a,0x7f8a78][k%3],fab:[0x1b2a4a,0xb3262e,0xf4efe2,0x15171a][k%4],r:.55});g.scale.setScalar(.8);g.userData.k=k;trolleys.push(g)}
+ while(trolleys.length<want){const k=trolleys.length;let g;if(MODELS.rect_frame_trolley){g=MODELS.rect_frame_trolley.clone();S.add(g)}else{g=batcher(S,{col:[0x1f6fd0,0xf6c21a,0x7f8a78][k%3],fab:[0x1b2a4a,0xb3262e,0xf4efe2,0x15171a][k%4],r:.55});g.scale.setScalar(.8)}g.userData.k=k;trolleys.push(g)}
  while(trolleys.length>want)S.remove(trolleys.pop())}
-GA.push(t=>trolleys.forEach((g,k)=>{const u=((t*.025+k/trolleys.length)%1)*2,p=u<1?u:2-u;g.position.set(-55+p*120,0,-16+(k%2?.9:-.9));g.rotation.y=u<1?0:PI}));
+GA.push(t=>trolleys.forEach((g,k)=>{const u=((t*.025+k/trolleys.length)%1)*2,p=u<1?u:2-u;g.position.set(-55+p*140,0,-16+(k%2?1.4:-1.4));g.rotation.y=u<1?0:PI}));
 
 // =====================================================================
 // SIMULATION
@@ -423,7 +442,7 @@ GA.push(t=>trolleys.forEach((g,k)=>{const u=((t*.025+k/trolleys.length)%1)*2,p=u
 function count(type,running){return machines.filter(m=>m.type===type&&(!running||!m.broken)).length}
 function speedOf(m){let s=1+.25*(m.level-1);s*=1+.05*Math.min(3,count('bay',1));
  if(count('boiler',1)&&['prep','dye','finish'].includes(m.def.zone))s*=1.15;
- if(m.type==='jet')s*=1+.1*Math.min(2,count('chem',1));return s}
+ if(m.type==='jet'||m.type==='jigger')s*=1+.1*Math.min(2,count('chem',1));return s}
 function pendingQty(t){return G.orders.filter(o=>o.type===t).reduce((a,o)=>a+o.qty,0)}
 function missing(m){const d=m.def;if(d.stenter)return G.inv.dyed>=1||G.inv.printed>=1?'':'dyed or printed fabric';
  for(const k in d.need)if(G.inv[k]<d.need[k])return MAT[k];
@@ -460,7 +479,7 @@ function deliver(id){const o=G.orders.find(q=>q.id===id);if(!o||G.inv[o.type]<o.
 // =====================================================================
 // CAMERA, INPUT, SELECTION
 // =====================================================================
-const bar=$('bar');const cur={t:new T.Vector3(5,0,-2),r:170,th:.62,ph:.92},goal={t:cur.t.clone(),r:cur.r,th:cur.th,ph:cur.ph};let viewIdx=0;
+const bar=$('bar');const cur={t:new T.Vector3(15,0,-2),r:190,th:.62,ph:.92},goal={t:cur.t.clone(),r:cur.r,th:cur.th,ph:cur.ph};let viewIdx=0;
 function go(i){viewIdx=i;const v=VIEWS[i];goal.t.set(...v[1]);goal.r=v[2];goal.th=v[3];goal.ph=v[4];[...bar.children].forEach((b,k)=>b.classList.toggle('on',k==i));refreshInfo()}
 VIEWS.forEach((v,i)=>{const b=document.createElement('button');b.textContent=v[0];b.onclick=()=>go(i);bar.appendChild(b)});
 function viewForZone(z){const map={prep:1,lab:2,dye:2,kitchen:3,engrave:4,rotary:5,trolley:6,flat:7,finish:8};return map[z]==null?0:map[z]}
@@ -585,19 +604,19 @@ function refreshInfo(){const h=$('info').querySelector('h2'),p=$('info').querySe
  if(tool){const d=DEF[tool];h.textContent='Placing: '+d.name;p.textContent=d.desc+' Place it in '+(ZONES[d.zone]?ZONES[d.zone].name:'any department')+'.'}
  else if(sel){h.textContent=sel.def.icon+' '+sel.name;p.textContent=sel.def.desc}
  else{const v=VIEWS[viewIdx];h.textContent=v[0];p.textContent=v[5]}}
-function refreshLabels(){for(const m of machines){const c=m.status==='Running'?'#4ade80':m.status.startsWith('Waiting')?'#fcd34d':'#ff7b7b';setLabel(m,m.name.length>26?m.name.slice(0,25)+'…':m.name,c)}}
+function refreshLabels(){const now=performance.now()/1000;for(const m of machines){const c=m.status==='Running'?'#4ade80':m.status.startsWith('Waiting')?'#fcd34d':'#ff7b7b';setLabel(m,m.name.length>26?m.name.slice(0,25)+'…':m.name,c);if(m.lamp){m.lamp.material.color.set(c);m.lamp.material.emissive.set(c);m.lamp.material.emissiveIntensity=m.running?1.2+Math.sin(now*4)*.6:.5}}}
 function refreshStatusLine(){if(tool)return;if(sel){$('st').textContent=sel.running&&sel.A.status?sel.A.status:sel.status;return}
  const v=VIEWS[viewIdx][0];if(v==='Flatbed & digital'){const f=machines.find(m=>m.type==='flatbed'&&m.running);$('st').textContent=f?f.A.status:''}else $('st').textContent=''}
 
 // =====================================================================
 // SAVE / LOAD / NEW GAME
 // =====================================================================
-const KEY='textileTycoon3D_v1';
+const KEY='textileTycoon3D_v2';
 function save(quiet){try{localStorage.setItem(KEY,JSON.stringify({G,ms:machines.map(m=>({t:m.type,x:m.x,z:m.z,r:m.rot,n:m.name,l:m.level,p:m.produced,b:m.broken,c:m.col}))}));if(!quiet)toast('💾 Plant saved')}catch(e){}}
 function clearPlant(){machines.slice().forEach(removeMachine);machines=[];MID=0}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d){toast('No saved plant yet');return false}clearPlant();G=Object.assign(freshState(),d.G);G.paused=false;
  d.ms.forEach(q=>{if(DEF[q.t])addMachine(q.t,q.x,q.z,q.r,{name:q.n,level:q.l,produced:q.p,broken:q.b,col:q.c})});syncTrolleys();renderTab();refreshStats();toast('📂 Plant loaded — '+monthName(G.month));return true}catch(e){return false}}
-const STARTER=[['desize',50,-8,0],['bleach',50,5,0],['station',-55,-39,0],['station',-48,-39,0],['chem',-47,-22,0],['jet',-21,-35,0],['kitchen',-42,-8,0],['coater',-33,24,1],['baby',-2,-6,0],['stenter',26,-32,0],['bay',-52,12,1],['boiler',60,-26,0]];
+const STARTER=[['desize',42,-8,0],['bleach',61,5,0],['station',-55,-39,0],['station',-48,-39,0],['chem',-47,-24,0],['jet',-19,-35,0],['kitchen',-42,-8,0],['coater',-33,24,0],['baby',-2,-6,0],['stenter',27,-32,0],['bay',-52,12,0],['boiler',72,-26,0]];
 function newGame(){clearPlant();G=freshState();G.paused=false;STARTER.forEach(s=>addMachine(s[1]?s[0]:s[0],s[1],s[2],s[3]));syncTrolleys();newOrder();newOrder();select(null);renderTab();refreshStats();go(0);toast('Welcome! Your starter plant is running — buy greige, deliver orders and expand.')}
 
 // =====================================================================
@@ -627,11 +646,12 @@ addEventListener('resize',onResize);
 // =====================================================================
 G=freshState();
 upgrade();initFX();applyFX();
-if(!load())newGame();
-$('ld').remove();onResize();
+(async()=>{const files=[...new Set(Object.values(DEF).flatMap(d=>!d.glb?[]:typeof d.glb==='string'?[d.glb]:d.glb.map(p=>p.f)))];let n=0;
+ await Promise.all(files.map(f=>loadModel(f).then(m=>{MODELS[f]=m}).catch(e=>{MODEL_ERR[f]=1;console.warn('model',f,e)}).finally(()=>{n++;$('ld').textContent='Loading detailed machine models… '+n+' / '+files.length})));
+ if(!load())newGame();$('ld').remove();onResize()})();
 let last=performance.now(),TT=0,uiLast=0;
 (function loop(n){requestAnimationFrame(loop);const rdt=Math.min(.05,(n-last)/1000);last=n;const gdt=G.paused?0:rdt*G.speed;
- if(gdt>0){sim(gdt);TT+=gdt;for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
+ if(gdt>0&&machines.length){sim(gdt);TT+=gdt;for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
  if(dragM||sel)syncHL();
  cur.t.lerp(goal.t,.06);for(const k of['r','th','ph'])cur[k]+=(goal[k]-cur[k])*.06;
  C.position.set(cur.t.x+cur.r*Math.sin(cur.ph)*Math.sin(cur.th),cur.t.y+cur.r*Math.cos(cur.ph),cur.t.z+cur.r*Math.sin(cur.ph)*Math.cos(cur.th));C.lookAt(cur.t);
