@@ -6,13 +6,13 @@ const T=THREE,PI=Math.PI,$=id=>document.getElementById(id);
 const main=$('main');const VW=()=>main.clientWidth,VH=()=>main.clientHeight;
 const R=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 const DPR=Math.min(devicePixelRatio,1.5);R.setPixelRatio(DPR);R.setSize(VW(),VH());
-R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;R.toneMapping=T.ACESFilmicToneMapping;R.outputEncoding=T.sRGBEncoding;
+R.shadowMap.enabled=true;R.shadowMap.type=T.PCFSoftShadowMap;R.shadowMap.autoUpdate=false;R.shadowMap.needsUpdate=true;R.toneMapping=T.ACESFilmicToneMapping;R.outputEncoding=T.sRGBEncoding;
 main.prepend(R.domElement);
 const S=new T.Scene(),BGC=0xdfe5ea;S.background=new T.Color(BGC);S.fog=new T.Fog(BGC,420,900);
 const C=new T.PerspectiveCamera(32,VW()/VH(),3,600);
 // ---------- lighting ----------
 const hemi=new T.HemisphereLight(0xf4f8ff,0xa59c90,.28);S.add(hemi);
-const sun=new T.DirectionalLight(0xfff4e6,.85);sun.position.set(-40,90,60);sun.castShadow=true;sun.shadow.mapSize.set(4096,4096);
+const sun=new T.DirectionalLight(0xfff4e6,.85);sun.position.set(-40,90,60);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
 Object.assign(sun.shadow.camera,{left:-90,right:90,top:70,bottom:-70,near:10,far:260});sun.shadow.bias=-.0012;sun.shadow.normalBias=.12;S.add(sun);
 const fill=new T.DirectionalLight(0xcfe0ff,.25);fill.position.set(60,40,-40);S.add(fill);
 // ---------- textures ----------
@@ -611,7 +611,7 @@ function upgrade(){const e=new T.Scene();e.add(new T.Mesh(new T.BoxGeometry(120,
  sb(80,50,0,34,0,0xffffff,PI/2);sb(30,25,-55,20,0,0xfff0dd,0,PI/2);sb(30,25,55,20,10,0xdde8ff,0,PI/2);sb(60,20,0,12,-58,0xeaf0f6);
  S.environment=new T.PMREMGenerator(R).fromScene(e,.03).texture;
  for(const m of [ST,STd,NI,GR])if(!m.bumpMap){m.bumpMap=brushed;m.bumpScale=.35}}
-let composer=null,useFX=true;
+let composer=null,useFX=(()=>{try{return localStorage.getItem('tt3d_hq')==='1'}catch(e){return false}})();
 function initFX(){try{const rt=new T.WebGLMultisampleRenderTarget(VW()*DPR,VH()*DPR,{format:T.RGBAFormat,type:T.HalfFloatType});
  composer=new T.EffectComposer(R,rt);composer.setPixelRatio(DPR);composer.setSize(VW(),VH());composer.addPass(new T.RenderPass(S,C));
  const ssao=new T.SSAOPass(S,C,VW(),VH());ssao.kernelRadius=3;ssao.minDistance=.0012;ssao.maxDistance=.014;composer.addPass(ssao);
@@ -621,7 +621,7 @@ function initFX(){try{const rt=new T.WebGLMultisampleRenderTarget(VW()*DPR,VH()*
  }catch(err){console.warn('FX off',err);composer=null}}
 function applyFX(){if(useFX&&composer){R.toneMapping=T.NoToneMapping;R.outputEncoding=T.LinearEncoding;S.background=new T.Color(window.skyCol||BGC).convertSRGBToLinear();S.fog.color.copy(S.background)}
  else{R.toneMapping=T.ACESFilmicToneMapping;R.outputEncoding=T.sRGBEncoding;S.background=new T.Color(window.skyCol||BGC);S.fog.color.set(window.skyCol||BGC)}$('fx').style.opacity=useFX?1:.5}
-$('fx').onclick=()=>{useFX=!useFX;applyFX()};
+$('fx').onclick=()=>{useFX=!useFX;try{localStorage.setItem('tt3d_hq',useFX?'1':'0')}catch(e){}applyFX();R.shadowMap.needsUpdate=true};
 function onResize(){R.setSize(VW(),VH());C.aspect=VW()/VH();C.updateProjectionMatrix();if(composer)composer.setSize(VW(),VH())}
 addEventListener('resize',onResize);
 
@@ -639,11 +639,17 @@ upgrade();initFX();applyFX();
   if(f==='batching_trolley'||f==='colour_drum_trolley')syncTrolleys(true);if(window.onModelLoaded)onModelLoaded(f,n,total)};
  const worker=async()=>{while(q.length){const f=q.shift();try{MODELS[f]=await loadModel(f)}catch(e){MODEL_ERR[f]=1;console.warn('model',f,e)}done(f);await new Promise(r=>setTimeout(r,0))}};
  await Promise.all([worker(),worker(),worker(),worker()]);if(window.onAllModels)onAllModels()})();
-let last=performance.now(),TT=0,uiLast=0;
+let last=performance.now(),TT=0,uiLast=0,shLast=0,perfPrev=0;
+// adaptive resolution: if frames get slow, render fewer pixels; recover when there is headroom
+let curPR=DPR,ftAvg=16,perfT=0;
+function perfGovern(ft){if(!ft||ft>250)return;ftAvg+=(ft-ftAvg)*.05;perfT+=ft;if(perfT<1500)return;perfT=0;
+ let pr=curPR;if(ftAvg>24&&curPR>.75)pr=Math.max(.75,curPR-.25);else if(ftAvg<13&&curPR<DPR)pr=Math.min(DPR,curPR+.25);
+ if(pr!==curPR){curPR=pr;R.setPixelRatio(pr);R.setSize(VW(),VH());if(composer){composer.setPixelRatio(pr);composer.setSize(VW(),VH())}}}
 (function loop(n){requestAnimationFrame(loop);const rdt=Math.min(.05,(n-last)/1000);last=n;const gdt=G.paused?0:rdt*G.speed;
  if(gdt>0&&machines.length){sim(gdt*(window.shiftRate||1));TT+=gdt;for(const m of machines)if(m.op){const w=m.op,pose=m.broken?'kneel':m.running?(m.type==='qc'?'inspect':m.def.util?'stand':'panel'):'stand';w.root.visible=m.def.util||m.worker||m.broken;resetPose(w);if(w.sp)w.sp.visible=pose==='kneel';if(pose==='kneel')spanner(w).visible=true;POSES[pose](w,TT+w.ph)}for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
  if(dragM||sel)syncHL();
- if(window.onFrame)onFrame(rdt,gdt);if(window.menuOrbit)goal.th+=rdt*.04;cur.t.lerp(goal.t,.06);for(const k of['r','th','ph'])cur[k]+=(goal[k]-cur[k])*.06;
+ if(window.onFrame)onFrame(rdt,gdt);if(window.menuOrbit)goal.th+=rdt*.04;const kk=1-Math.exp(-rdt*13);cur.t.lerp(goal.t,kk);for(const k of['r','th','ph'])cur[k]+=(goal[k]-cur[k])*kk;
  C.position.set(cur.t.x+cur.r*Math.sin(cur.ph)*Math.sin(cur.th),cur.t.y+cur.r*Math.cos(cur.ph),cur.t.z+cur.r*Math.sin(cur.ph)*Math.cos(cur.th));C.lookAt(cur.t);
  if(n-uiLast>400){uiLast=n;refreshStats();refreshLabels();refreshStatusLine();refreshEditorStatus();if(tab==='orders'||tab==='finance'){if(!$('tc').matches(':hover'))renderTab()}}
+ if(n-shLast>140){shLast=n;R.shadowMap.needsUpdate=true}perfGovern(n-(perfPrev||n));perfPrev=n;
  if(useFX&&composer)composer.render();else R.render(S,C)})(last);

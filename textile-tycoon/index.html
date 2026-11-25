@@ -242,6 +242,17 @@ body.night #clock .ct,body.night #status .sv{color:#f3f6ff}body.night #clock .ct
 #mload{position:fixed;left:14px;bottom:86px;z-index:70;display:flex;align-items:center;gap:10px;background:rgba(22,33,62,.86);color:#fff;border-radius:999px;padding:6px 14px 6px 6px;font:700 12.5px var(--body);box-shadow:var(--shadow);backdrop-filter:blur(8px);transition:opacity .6s,transform .6s}
 #mload svg{width:34px;height:34px;transform:rotate(-90deg)}#mload b{font:800 13px var(--head);display:block}#mload.done{opacity:0;transform:translateY(12px);pointer-events:none}
 #menu #mload,body.menu #mload{bottom:16px}
+#tutBtn{position:fixed;top:14px;right:14px;z-index:8;border:0;cursor:pointer;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;font:800 14px var(--head);color:var(--navy);background:linear-gradient(#fff,#f1e2c8);box-shadow:0 3px 0 #d9c19a,var(--shadow);transition:transform .25s var(--spring)}
+#tutBtn:hover{transform:translateY(-2px)}#tutBtn.on{background:linear-gradient(#ffe08a,#f6b93b);box-shadow:0 3px 0 #c98a12,var(--shadow)}
+#coachRing{position:fixed;z-index:30;pointer-events:none;border:3px solid #f6b93b;box-shadow:0 0 0 4px rgba(246,185,59,.35),0 0 24px rgba(246,185,59,.8);animation:cring 1.2s ease-in-out infinite;transition:left .35s,top .35s,width .35s,height .35s}
+@keyframes cring{50%{box-shadow:0 0 0 10px rgba(246,185,59,0),0 0 34px rgba(246,185,59,1)}}
+#coach{position:fixed;z-index:31;width:300px;background:#16213e;color:#fff;border-radius:18px;padding:12px 14px 10px;box-shadow:0 14px 40px rgba(10,15,35,.45);border:2px solid #f6b93b;transition:left .35s var(--spring),top .35s var(--spring);animation:pop .35s var(--spring)}
+#coach .cb{display:flex;gap:10px}#coach .cico{font-size:24px}#coach h5{margin:0 0 3px;font:800 15px var(--head);color:#ffd34d}#coach p{margin:0;font-size:13px;line-height:1.45;color:#e6ecff}
+#coach .cbt{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}#coach .cbt button{border:0;background:rgba(255,255,255,.1);color:#cfd8f5;border-radius:9px;padding:4px 9px;font:700 11px var(--body);cursor:pointer}#coach .cbt button:hover{background:rgba(255,255,255,.2)}
+#coach .ca{position:absolute;bottom:-46px;width:34px;height:40px;animation:cbob .9s ease-in-out infinite;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}
+#coach.below .ca{bottom:auto;top:-46px}@keyframes cbob{50%{translate:0 7px}}#coach.below .ca{animation-name:cbobU}@keyframes cbobU{50%{translate:0 -7px}}
+#coach.hidden,#coachRing.hidden{display:none}
+#tc:not(.fresh) .card,#tc:not(.fresh) .mc,#tc:not(.fresh) .kpi{animation:none}
 </style>
 </head>
 <body>

@@ -142,7 +142,8 @@ window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');
    s.goals.forEach(g=>{const v=goalValue(g.k),pct=Math.max(0,Math.min(100,v/g.n*100));h+=`<div class="card"><h4>${pct>=100?'✅ ':''}${g.label}</h4><div class="mut">${g.k==='cash'||g.k==='revenue'?money(v):Math.round(v)} of ${g.k==='cash'||g.k==='revenue'?money(g.n):g.n}</div><div class="bar2${pct>=100?' done':''}"><i style="width:${pct}%"></i></div></div>`})}}
  else if(k==='views'&&sb==='dsp'){h+=displayHTML()}
  else if(k==='views'){h+='<div class="grid">'+VIEWS.map((v,i)=>`<button class="mc" data-u="view" data-k="${i}" style="animation-delay:${i*30}ms"><b>${v[0]}</b><span class="rec">${esc(v[5].slice(0,110))}${v[5].length>110?'…':''}</span></button>`).join('')+'</div>'}
- tc.innerHTML=h};
+ if(tc._h===h)return;const fresh=tc._k!==k+'|'+sb;tc._h=h;tc._k=k+'|'+sb;const st=tc.scrollTop;tc.innerHTML=h;tc.scrollTop=fresh?0:st;
+ if(fresh){tc.classList.add('fresh');clearTimeout(tc._ft);tc._ft=setTimeout(()=>tc.classList.remove('fresh'),900)}};
 $('tc').addEventListener('input',e=>{const r=e.target;if(!r.dataset||!r.dataset.set)return;const v=+r.value,k=r.dataset.set;const c=G.cfg=G.cfg||{};
  if(k==='speed'){c.speed=v;RULES.speed=v;for(const L in LOOPS)LOOPS[L].sp=v}if(k==='maxLoad'){c.maxLoad=v;RULES.maxLoad=v}if(k==='month'){c.month=v;MONTH=v}if(k==='brk'){c.brk=v;G.brk=v/100}if(k==='wage'){c.wage=v;G.wage=v}if(k==='day'){c.day=v;DN.len=v}
  const o=r.parentElement.querySelector('b');if(o)o.textContent=SETF[k](v)});
@@ -230,7 +231,7 @@ async function openSaves(mode){UIS.savesMode=mode;const ix=index();const fs=!!wi
   if(m==='del'){const e2=index().find(x=>x.id===id);if(confirm('Delete “'+(e2?e2.name:'save')+'”?')){delSlot(id);openSaves(mode)}}}}
 function openGameMenu(){const was=G.paused;G.paused=true;refreshStats();const o=modal(`<header>${ico('i-menu')}<h2>Game menu</h2><button class="x" data-m="x">✕</button></header><div class="mb"><div class="scg">
   ${[['resume','i-play','Resume','Back to the plant'],['save','i-save','Save game','Compressed slots + folder'],['load','i-load','Load game','Pick up any saved plant'],['new','i-new','New game','Scenario, layout, rules'],['help','i-help','How to play','Controls and tips'],['title','i-logo','Main menu','Back to the title screen']].map(([k,i,t,d],n)=>`<button class="sc" data-m="${k}" style="min-height:0;animation-delay:${n*40}ms">${ico(i)}<h4>${t}</h4><p>${d}</p></button>`).join('')}
-  </div><div class="row" style="margin-top:14px"><label class="tog" style="flex:1">High-quality rendering <input type="checkbox" id="optHQ" ${useFX?'checked':''}></label><label class="tog" style="flex:1">Machine labels <input type="checkbox" id="optLb" ${showLabels?'checked':''}></label></div></div>`);
+  </div><div class="row" style="margin-top:14px"><label class="tog" style="flex:1">High-quality rendering <input type="checkbox" id="optHQ" ${useFX?'checked':''}></label><label class="tog" style="flex:1">🎓 Tutorial <input type="checkbox" ${CO.on?'checked':''} onchange="window.setTutorial(this.checked)"></label><label class="tog" style="flex:1">Machine labels <input type="checkbox" id="optLb" ${showLabels?'checked':''}></label></div></div>`);
  o.querySelector('#optHQ').onchange=()=>$('fx').click();o.querySelector('#optLb').onchange=()=>$('lbl').click();
  o.onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;const m=b.dataset.m;if(m==='x'||m==='resume'){closeModal();G.paused=was}if(m==='save')openSaves('save');if(m==='load')openSaves('load');if(m==='new')openWizard();if(m==='help')openHelp();if(m==='title'){closeModal();if(UIS.inGame)saveSlot('auto','Autosave',true);showMenu()}}}
 function openHelp(){modal(`<header>${ico('i-help')}<h2>How to play</h2><button class="x" onclick="document.getElementById('ov').remove()">✕</button></header><div class="mb"><div class="scg">
@@ -269,7 +270,7 @@ function renderWizard(){const st=WZ.step,s=scn(WZ.scenario);
    ${rng('speed','Trolley speed',.6,2,.1,v=>(+v).toFixed(1)+' m/s')}
    ${rng('maxLoad','Max trolley load (1 pusher)',150,300,10,v=>v+' kg')}
    ${rng('brk','Breakdown chance',0,10,.5,v=>(+v).toFixed(1)+'% a month')}
-   <div class="fld"><label>Utilities</label><div class="tog">Steam boiler (+15% speed) <input type="checkbox" data-t="boiler" ${WZ.boiler?'checked':''}></div><div class="tog">Fabric inspection / QC <input type="checkbox" data-t="qc" ${WZ.qc?'checked':''}></div><div class="tog">ETP researched &amp; built <input type="checkbox" data-t="etp" ${WZ.etp?'checked':''}></div><div class="tog">Night shift from day 1 <input type="checkbox" data-t="night" ${WZ.night?'checked':''}></div></div>
+   <div class="fld"><label>Utilities</label><div class="tog">Steam boiler (+15% speed) <input type="checkbox" data-t="boiler" ${WZ.boiler?'checked':''}></div><div class="tog">Fabric inspection / QC <input type="checkbox" data-t="qc" ${WZ.qc?'checked':''}></div><div class="tog">ETP researched &amp; built <input type="checkbox" data-t="etp" ${WZ.etp?'checked':''}></div><div class="tog">Night shift from day 1 <input type="checkbox" data-t="night" ${WZ.night?'checked':''}></div><div class="tog">🎓 Tutorial arrows when stuck <input type="checkbox" id="wTut" ${CO.on?'checked':''} onchange="window.setTutorial(this.checked)"></div></div>
   </div><div class="card" style="margin-top:12px"><h4>Working rules</h4><div class="mut">One-way trolley loops at ${(+WZ.speed).toFixed(1)} m/s · one pusher per trolley, total load within ${WZ.maxLoad} kg · lanes kept clear · each production machine needs an operator${WZ.rules.length?' · plus '+WZ.rules.length+' rules from your sheet':''}.</div></div>`}
  const o=modal(`<header>${ico('i-new')}<h2>New game</h2><div class="steps">${steps}</div>${UIS.inGame?'<button class="x" data-w="x">✕</button>':''}</header><div class="mb">${body}</div>
   <footer>${st>1?'<button class="btn ghost" data-w="back">← Back</button>':(UIS.inGame?'':'<button class="btn ghost" data-w="menu">← Menu</button>')}<span class="spacer" style="flex:1"></span><span class="mut">${esc(s.name)} · ${esc(WZ.custom?WZ.custom.name:LAYOUTS[WZ.layout].name)}</span>${st<3?'<button class="btn gold" data-w="next">Next →</button>':'<button class="btn green" data-w="go">▶ Start game</button>'}</footer>`,'wiz');
@@ -343,8 +344,8 @@ function startGame(c){closeModal();hideMenu();const s=scn(c.scenario);clearPlant
  syncTrolleys();newOrder();newOrder();UIS.cashShown=G.money;UIS.slot=null;enterGame();go(0);
  banner('Welcome to '+G.plantName,s.name);if(skipped)toast('⚠️ '+skipped+' machines did not fit and were left out');
  if(s.goals.length)setTimeout(()=>togglePanel('goals'),900)}
-function enterGame(){UIS.inGame=true;window.menuOrbit=false;G.paused=false;if(!G.speed)G.speed=1;['chip','bar','z','info','dock','status','clock'].forEach(id=>$(id).classList.remove('hidden'));closeModal();renderDock();refreshStats();renderTab();if(UIS.panel)renderTab()}
-function exitGame(){UIS.inGame=false;closePanel();select(null);if(tool)setTool(null);['chip','bar','z','info','dock','status','clock'].forEach(id=>$(id).classList.add('hidden'))}
+function enterGame(){UIS.inGame=true;window.menuOrbit=false;G.paused=false;if(!G.speed)G.speed=1;['chip','bar','z','info','dock','status','clock','tutBtn'].forEach(id=>$(id)&&$(id).classList.remove('hidden'));closeModal();renderDock();refreshStats();renderTab();if(UIS.panel)renderTab()}
+function exitGame(){UIS.inGame=false;closePanel();select(null);if(tool)setTool(null);['chip','bar','z','info','dock','status','clock','tutBtn'].forEach(id=>$(id)&&$(id).classList.add('hidden'))}
 
 // ---------------------------------------------------------------------
 // GOALS, WIN / LOSE
@@ -433,6 +434,68 @@ window.onFrame=function(rdt,gdt){if(!G)return;G.tod=(G.tod||0)+gdt;const h=hourN
  if(UIS.inGame&&performance.now()-(DN.lastC||0)>250){DN.lastC=performance.now();refreshClock();const wasN=DN.wasN,nowN=isNight(((G.tod||0)/DN.len*24+6)%24);if(wasN!=null&&wasN!==nowN&&DN.lock==null)banner(nowN?'Night falls':'Sunrise',nowN?(G.nightShift?'night shift takes over':'skeleton crew · 35% output'):'day shift starts');DN.wasN=nowN}};
 $('cNight').onclick=()=>setNight(!G.nightShift);$('cSkip').onclick=skipNight;
 
+
+// ---------------------------------------------------------------------
+// TUTORIAL COACH — when switched on, watches the plant and, whenever it is
+// stuck, points with an arrow at the exact button (or machine) to press next.
+// It traces a waiting machine back through the process chain to the root cause.
+// ---------------------------------------------------------------------
+const CO={on:(()=>{try{const v=localStorage.getItem('tt3d_tutorial');return v==null?true:v==='1'}catch(e){return true}})(),snooze:{},key:''};
+window.setTutorial=on=>setTutorial(on);function setTutorial(on){CO.on=on;try{localStorage.setItem('tt3d_tutorial',on?'1':'0')}catch(e){}const b=$('tutBtn');if(b){b.classList.toggle('on',on);b.querySelector('span').textContent=on?'Tutorial on':'Tutorial off'}
+ if(!on)hideCoach();toast(on?'🎓 Tutorial on — follow the arrow whenever the plant gets stuck':'🎓 Tutorial off')}
+function needOf(m){for(const k in m.def.need)if(G.inv[k]<m.def.need[k])return k;return null}
+const producers=k=>machines.filter(m=>m.def.out&&m.def.out[k]);
+const typesMaking=k=>Object.keys(DEF).filter(t=>DEF[t].out&&DEF[t].out[k]).sort((a,b)=>(unlocked(b)-unlocked(a))||DEF[a].cost-DEF[b].cost);
+const isProd=m=>!m.def.util&&m.def.need;
+// find what is really holding a material back
+function rootCause(k,seen){seen=seen||{};if(seen[k])return null;seen[k]=1;
+ if(k==='greige')return{kind:'buy'};
+ const ps=producers(k);if(!ps.length){const t=typesMaking(k)[0];return t?{kind:'build',type:t,mat:k}:null}
+ if(ps.some(m=>m.running))return null;                       // being made, just wait
+ const br=ps.find(m=>m.broken);if(br)return{kind:'repair',m:br};
+ const idle=ps.find(m=>!m.worker);if(idle)return{kind:'hire',m:idle};
+ for(const m of ps){const n=needOf(m);if(n){const r=rootCause(n,seen);if(r)return r}}return null}
+// route a target through dock → submenu → button
+function via(panel,sub,sel,title,text){if(UIS.panel!==panel)return{el:document.querySelector('.dk[data-p='+panel+']'),title,text:'Open '+PANEL_META[panel][1]+'. '+text};
+ if(sub&&subOf(panel)!==sub){const b=document.querySelector('.sub button[data-k='+sub+']');return{el:b,title,text:'Open the “'+(b?b.textContent:sub)+'” tab. '+text}}
+ const el=document.querySelector('#tc '+sel);return el?{el,title,text}:null}
+function atMachine(m,title,text,then){if(sel===m&&then){const el=document.querySelector(then);if(el)return{el,title,text:'Press this button.'}}return{pt:new THREE.Vector3(m.x,(m.def.h||4)+.5,m.z),title,text:'Click the '+m.name+'. '+text}}
+function money4(cost,step){if(G.money>=cost)return step();if(G.loan<100000)return via('finance','ln','[data-a=borrow]','Not enough cash','Borrow from the bank to pay for it.');return via('finance','mk','[data-a=spot]:not([disabled])','Raise cash','Sell finished fabric on the spot market.')}
+function diagnose(){
+ const br=machines.find(m=>m.broken);if(br)return money4(repCost(br),()=>atMachine(br,'A machine has broken down',br.name+' is stopped. Repair it in its panel.','#peRp'));
+ const ok=G.orders.find(o=>G.inv[o.type]>=o.qty);if(ok)return via('orders',null,'[data-a=deliver][data-k="'+ok.id+'"]','An order is ready','You have enough fabric for order #'+ok.id+' — deliver it for '+money(ok.reward)+'.');
+ const need=machines.filter(m=>!m.def.util).length;if(G.workers<need)return money4(1500,()=>via('staff','op','[data-a=hire]','Machines without operators',(need-G.workers)+' machine'+(need-G.workers>1?'s have':' has')+' nobody to run '+(need-G.workers>1?'them':'it')+'. Hire an operator.'));
+ // a machine waiting for input
+ const waiting=machines.filter(m=>isProd(m)&&!m.running&&m.worker&&!m.broken&&needOf(m));
+ const stent=machines.find(m=>m.def.stenter&&!m.running&&G.inv.dyed<1&&G.inv.printed<1);
+ const tries=waiting.map(m=>[m,needOf(m)]);if(stent)tries.push([stent,'dyed']);
+ for(const[m,k]of tries){const r=rootCause(k);if(!r)continue;const why=m.name+' is waiting for '+MAT[k].toLowerCase()+'. ';
+  if(r.kind==='buy')return money4(G.greige*10,()=>via('finance','mk','[data-a=buy][data-k="10"]','The plant has run out of greige',why+'Everything starts from greige (raw fabric). Buy 10 lots.'));
+  if(r.kind==='repair')return money4(repCost(r.m),()=>atMachine(r.m,'Broken machine in the chain',why+'It is held up because '+r.m.name+' is broken.','#peRp'));
+  if(r.kind==='hire')return money4(1500,()=>via('staff','op','[data-a=hire]','Operator needed',why+r.m.name+' has nobody to run it.'));
+  if(r.kind==='build'){const t=r.type,d=DEF[t];if(!unlocked(t)){const rs=RESEARCH.find(x=>x.id===d.research);return money4(rs.cost,()=>via('research',null,'[data-a=res][data-k="'+rs.id+'"]','Research needed',why+'No machine makes '+MAT[r.mat].toLowerCase()+' yet. Research '+rs.name+' first.'))}
+   if(tool===t){const sp=autoSpot(t,machines.map(q=>[q.type,q.x,q.z,q.rot]));if(sp)return{pt:new THREE.Vector3(sp[0],.3,sp[1]),title:'Place the '+d.name,text:'Click this green spot to build it.'}}
+   return money4(d.cost,()=>{if(UIS.panel==='build'&&UIS.cat!=='all'&&UIS.cat!==d.zone){const c=document.querySelector('#tc [data-u=cat][data-k="'+d.zone+'"]');if(c)return{el:c,title:'Build a '+d.name,text:'Show this department.'}}
+    return via('build',null,'[data-a=tool][data-k="'+t+'"]','Missing machine',why+'Nothing in the plant makes '+MAT[r.mat].toLowerCase()+'. Build a '+d.name+'.')})}}
+ if(G.money<0&&G.loan<100000)return via('finance','ln','[data-a=borrow]','Cash is below zero','Borrow to keep paying wages while orders come in.');
+ const fin=Math.floor(G.inv.fd+G.inv.fp);if(fin>=15&&!G.orders.some(o=>G.inv[o.type]>=1))return via('finance','mk','[data-a=spot]:not([disabled])','Stock is piling up','No order needs this fabric right now — sell some on the spot market.');
+ return null}
+function hideCoach(){const c=$('coach');if(c)c.classList.add('hidden');const r=$('coachRing');if(r)r.classList.add('hidden')}
+function coachTick(){if(!CO.on||!UIS.inGame||$('ov')||$('menu')||!G){hideCoach();return}
+ let h=null;try{h=diagnose()}catch(e){console.warn(e)}if(!h||(!h.el&&!h.pt)||CO.snooze[h.title]>performance.now()){hideCoach();return}
+ let x,y,w,hh;if(h.el){const r=h.el.getBoundingClientRect();if(!r.width){hideCoach();return}if(h.el.closest('#tc')){const tc=$('tc'),tr=tc.getBoundingClientRect();if(r.top<tr.top||r.bottom>tr.bottom)h.el.scrollIntoView({block:'nearest',behavior:'smooth'})}x=r.left;y=r.top;w=r.width;hh=r.height}
+ else{const p=project(h.pt);if(!p){hideCoach();return}x=p.x-30;y=p.y-30;w=60;hh=60}
+ const ring=$('coachRing'),c=$('coach');ring.classList.remove('hidden');Object.assign(ring.style,{left:x-6+'px',top:y-6+'px',width:w+12+'px',height:hh+12+'px',borderRadius:h.pt?'50%':'18px'});
+ c.classList.remove('hidden');c.querySelector('h5').textContent=h.title;c.querySelector('p').textContent=h.text;CO.cur=h.title;
+ const below=y<190,cx=x+w/2;const arrow=c.querySelector('.ca');arrow.style.transform=below?'rotate(180deg)':'';
+ const cw=c.offsetWidth,ch=c.offsetHeight;let left=Math.min(innerWidth-cw-10,Math.max(10,cx-cw/2));c.style.left=left+'px';c.style.top=(below?y+hh+12:y-ch-12)+'px';c.classList.toggle('below',below);
+ arrow.style.left=(cx-left-17)+'px'}
+function coachInit(){const b=document.createElement('button');b.id='tutBtn';b.className=(CO.on?'on ':'')+'hidden';b.title='Tutorial: arrows show what to do when the plant is stuck (T)';b.innerHTML='🎓 <span>'+(CO.on?'Tutorial on':'Tutorial off')+'</span>';b.onclick=()=>setTutorial(!CO.on);$('chip').after(b);
+ const r=document.createElement('div');r.id='coachRing';r.className='hidden';document.body.appendChild(r);
+ const c=document.createElement('div');c.id='coach';c.className='hidden';c.innerHTML='<div class="cb"><span class="cico">🎓</span><div><h5></h5><p></p></div></div><div class="cbt"><button data-c="later">Not now</button><button data-c="off">Turn tutorial off</button></div><svg class="ca" viewBox="0 0 34 40"><path d="M17 40 L2 20 H11 V0 H23 V20 H32 Z" fill="#f6b93b" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>';document.body.appendChild(c);
+ c.onclick=e=>{const k=e.target.dataset&&e.target.dataset.c;if(k==='later'){CO.snooze[CO.cur]=performance.now()+45000;hideCoach()}if(k==='off')setTutorial(false)};
+ setInterval(coachTick,350);addEventListener('resize',coachTick)}
+
 // ---------------------------------------------------------------------
 // BOOT
 // ---------------------------------------------------------------------
@@ -453,10 +516,11 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
  if(e.key==='Escape'){if($('ov')&&UIS.inGame){closeModal();return}if(UIS.panel&&!tool&&!sel){closePanel();return}}
  if(!UIS.inGame||$('ov'))return;
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();quickSave();return}
- if(e.key.toLowerCase()==='n'&&!e.ctrlKey){setNight(!G.nightShift);return}const map={b:'build',o:'orders',f:'finance',g:'goals'};if(map[e.key.toLowerCase()]&&!e.ctrlKey&&!e.metaKey)togglePanel(map[e.key.toLowerCase()])},true);
+ if(e.key.toLowerCase()==='t'&&!e.ctrlKey&&!e.metaKey){setTutorial(!CO.on);return}if(e.key.toLowerCase()==='n'&&!e.ctrlKey){setNight(!G.nightShift);return}const map={b:'build',o:'orders',f:'finance',g:'goals'};if(map[e.key.toLowerCase()]&&!e.ctrlKey&&!e.metaKey)togglePanel(map[e.key.toLowerCase()])},true);
 // keep the cash counter animating and the dock fresh between engine UI refreshes
-setInterval(()=>{if(UIS.inGame)refreshStats()},120);
+setInterval(()=>{if(UIS.inGame)refreshStats()},200);
 // the engine status line only matters while placing or with a machine selected
 setInterval(()=>{if(UIS.inGame)refreshInfo()},400);
+coachInit();
 if(window.engineReady)onModelsReady();
 })();
