@@ -372,7 +372,7 @@ const VIEWS=[
  ['Colour kitchen',[-40,2,-8],48,.5,.85,'Colour weighing & recipe stations and the 24-colour auto paste dispenser make print paste for every print line.'],
  ['Screen engraving',[-32,1.5,20],62,.5,.85,'Rotary screen lacquering machines and the laser engraver make the screens the rotary and flatbed lines wear out.'],
  ['Rotary printing',[5,2,12],80,.55,.85,'Baby rotary for samples and the Embee Infinium TD 8-colour rotary for production, with its gas-fired dryer.'],
- ['Trolley loops',[0,0,-16],95,.35,.8,'Plant rules: trolleys run on one-way loops, equally spaced at walking pace (1.2 m/s), so no trolley ever meets another. The push crew follows the total load: 1 person up to 300 kg, 2 up to 600 kg, 3 above (the third pulls at the front). Lanes stay clear: no machine may stand on a yellow lane.'],
+ ['Trolley loops',[0,0,-16],95,.35,.8,'Plant rules: trolleys run on one-way loops, equally spaced at walking pace (1.2 m/s), so no trolley ever meets another. One person pushes each trolley, and its total load stays within 300 kg. Lanes stay clear: no machine may stand on a yellow lane.'],
  ['Trolley storage',[-52,1,18],46,.6,.9,'Channel-type batching trolleys buffer work-in-progress. More bays put more trolleys on the aisle and speed up the plant.'],
  ['Flatbed & digital',[60,1.5,27],55,.55,.8,'10-colour automatic flatbed screen printer and wide-format inkjet printers.'],
  ['Finishing',[40,5,-30],90,.6,.8,'6-chamber pin-cum-clip stenters heat-set, dry and width-control dyed or printed fabric into deliverable finished goods.']];
@@ -435,15 +435,15 @@ function unpaint(m){m.col=null;(m.mats||[]).forEach(x=>x.color.copy(x.userData.b
 
 // =====================================================================
 // MOTION RULES (as in Kibrom Plant 3D): one-way trolley loops — equal spacing + equal speed + one direction,
-// so no trolley ever meets another; trolleys move at walking pace (1.2 m/s); the push crew follows the total
-// load (fabric + trolley tare): 1 person up to 300 kg, 2 up to 600 kg, 3 above (the third pulls at the front).
+// so no trolley ever meets another; trolleys move at walking pace (1.2 m/s); one person pushes each trolley, never more,
+// and a trolley's total load (fabric + tare) stays within 300 kg.
 // =====================================================================
 // Rule values, as in the Sheet "Textile Tycoon — Trolleys, Workers & Plant Rules" (Loops and Trolleys & crews tabs)
-const RULES={speed:1.2,crew:[[300,1],[600,2],[Infinity,3]],
- loops:{A:{start:3,perBay:1,max:6,loads:[420,600,300,520,380,560],tare:140},B:{start:2,perBay:.5,max:4,loads:[300,450,300,450],tare:140},C:{start:2,perBay:0,max:2,loads:[220,180],tare:60}},
+const RULES={speed:1.2,maxLoad:300,crew:[[300,1]],
+ loops:{A:{start:3,perBay:1,max:6,loads:[160,150,140,160,130,150],tare:140},B:{start:2,perBay:.5,max:4,loads:[150,160,150,160],tare:140},C:{start:2,perBay:0,max:2,loads:[220,180],tare:60}},
  text:[['Trolley loops','Trolleys run on closed one-way loops, equally spaced and at the same speed, so no trolley ever meets another.','Yellow lanes with direction arrows; the Trolley loops view'],
   ['Speed','Walking pace: 1.2 m/s at 1× game speed.','Trolleys on the loops'],
-  ['Push crew','Crew sized by total load (fabric + trolley tare): up to 300 kg 1 person, up to 600 kg 2, above that 3, with the third pulling at the front.','Load tag on each trolley: "kg · people"'],
+  ['Push crew','One person pushes each trolley, never two or more. A trolley\'s total load (fabric + trolley tare) stays within 300 kg, so one person can always push it.','Load tag on each trolley: "kg · 1 person"'],
   ['Clear lanes','No machine may stand on a yellow lane.','Build preview: "Keep the trolley lane clear"'],
   ['Operators','Each production machine needs one operator. Without one it stops and its operator disappears.','Machines; Operators stat in the sidebar'],
   ['Operator poses','Panel while running, stand while waiting for material, kneel with a spanner when broken. The inspector inspects.','At each machine'],
@@ -493,7 +493,7 @@ const UNIFORM={prep:'prep',lab:'lab',dye:'dye',kitchen:'ck',engrave:'eng',rotary
 function uniformFor(m){return m.type==='boiler'?'utl':m.type==='etp'?'etp':m.type==='qc'?'ins':m.type==='chem'?'chm':UNIFORM[m.def.zone]||'utl'}
 // ---------------- trolleys + push crews on the loops ----------------
 const MOV=new T.Group();S.add(MOV);let movers=[];
-function crewFor(kg){return RULES.crew.find(c=>kg<=c[0])[1]}
+function crewFor(kg){return 1}
 function loadTag(txt){const s=new T.Sprite(new T.SpriteMaterial({map:spriteTex(txt,'#fde68a','rgba(18,24,32,.85)',256,64,'bold 30px Arial'),transparent:true}));s.scale.set(1.5,.38,1);s.raycast=()=>{};return s}
 function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_drum_trolley':'batching_trolley';
  if(MODELS[f]){const c=MODELS[f].clone();if(kind!=='drum')c.rotation.y=PI/2;g.add(c)}else{const b=batcher(g,{col:0x1f6fd0,fab:0x1b2a4a,r:.55});b.scale.setScalar(.75);b.rotation.y=PI/2}
@@ -501,7 +501,7 @@ function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_
 function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length,k=Object.keys(LOOPS).find(q=>LOOPS[q]===L),r=RULES.loops[k];return Math.min(r.max,r.start+Math.floor(bays*r.perBay))}
 function syncTrolleys(){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
  for(const v of movers){MOV.remove(v.tr);v.ws.forEach(w=>{MOV.remove(w.root);WKS.splice(WKS.indexOf(w),1)})}movers=[];
- for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const load=L.loads[i%L.loads.length],tot=load+L.tare,np=crewFor(tot);
+ for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const tot=Math.min(RULES.maxLoad,L.loads[i%L.loads.length]+L.tare),np=crewFor(tot);
   const lt=loadTag(tot+' kg · '+np+(np>1?' people':' person'));lt.position.y=2.2;tr.add(lt);
   const ws=[];for(let j=0;j<np;j++){const w=mkWorker(L.u);MOV.add(w.root);ws.push(w)}movers.push({k,L,tr,ws,np,len:tr.userData.len||2.7,d0:i*L.tot/n,ph:Math.random()*5,tot})}}}
 GA.push((t)=>{for(const v of movers){const{L,tr,ws,np,len}=v,d=v.d0+t*L.sp,p=L.at(d),h=L.head(d);tr.position.copy(p);tr.rotation.y=h;
@@ -653,7 +653,7 @@ function renderTab(){const tc=$('tc');let h='';
  else if(tab==='research'){for(const r of RESEARCH){const done=G.research[r.id],can=!r.req||G.research[r.req];h+=`<div class="card${done?' done':''}">${r.icon} <b>${r.name}</b>${done?' ✅':''}<br><span style="color:var(--mut)">${r.desc}</span>${done?'':`<div class="row"><button data-a="res" data-k="${r.id}" ${can&&G.money>=r.cost?'':'disabled'}>Research ${fmt(r.cost)}</button>${can?'':' <span class="bad">needs '+RESEARCH.find(x=>x.id===r.req).name+'</span>'}</div>`}</div>`}}
  else{let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const busy=machines.filter(m=>!m.def.util&&m.worker).length,need=machines.filter(m=>!m.def.util).length;
   h+=stockHTML()+`<div class="card"><b>Monthly running cost</b><br>Machine upkeep ${fmt(up)}<br>Wages ${G.workers} × $600 = ${fmt(G.workers*600)}<br>Loan interest ${fmt(G.loan*.01)}<br>Total revenue so far <span class="good">${fmt(G.revenue)}</span></div>
-  <div class="card"><b>Floor rules</b><br>• One-way trolley loops: equal spacing, equal speed, one direction — no trolley meets another<br>• Walking pace 1.2 m/s<br>• Push crew by load: ≤300 kg 1 person, ≤600 kg 2, above 3 (third pulls in front)<br>• Machines may not stand on the yellow lanes<br>• Each production machine needs one operator; without one it stops<br>Material handlers on the loops: ${movers.reduce((a,v)=>a+v.np,0)}</div>
+  <div class="card"><b>Floor rules</b><br>• One-way trolley loops: equal spacing, equal speed, one direction — no trolley meets another<br>• Walking pace 1.2 m/s<br>• One person pushes each trolley; total load stays within 300 kg<br>• Machines may not stand on the yellow lanes<br>• Each production machine needs one operator; without one it stops<br>Material handlers on the loops: ${movers.reduce((a,v)=>a+v.np,0)}</div>
   <div class="card"><b>Operators</b> — ${busy} working, ${need} machines need one<div class="row"><button data-a="hire" ${G.money<1500?'disabled':''}>👷 Hire ($1,500)</button><button data-a="fire" ${G.workers<1?'disabled':''}>Dismiss</button></div></div>
   <div class="card"><b>Greige market</b> — ${fmt(G.greige)} per lot<div class="row"><button data-a="buy" data-k="10" ${G.money<G.greige*10?'disabled':''}>Buy 10 lots ${fmt(G.greige*10)}</button><button data-a="buy" data-k="30" ${G.money<G.greige*30?'disabled':''}>Buy 30</button></div></div>
   <div class="card"><b>Spot market</b> (lower than order prices)<div class="row"><button data-a="spot" data-k="fd" ${G.inv.fd<1?'disabled':''}>Sell finished dyed $550/lot</button><button data-a="spot" data-k="fp" ${G.inv.fp<1?'disabled':''}>Sell finished printed $800/lot</button></div></div>
