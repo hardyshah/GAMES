@@ -238,11 +238,15 @@ body.night #clock .ct,body.night #status .sv{color:#f3f6ff}body.night #clock .ct
 .dkm button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:transparent;border-radius:11px;padding:8px 10px;font:800 13.5px var(--head);color:var(--navy);cursor:pointer;text-align:left}
 .dkm button:hover{background:#fdecc8}.dkm button svg{width:26px;height:26px}.dkm button small{display:block;font:600 11px var(--body);color:#8a7558}
 .dk .more{position:absolute;top:-4px;left:-4px;width:20px;height:20px;border-radius:50%;background:#fff;color:#16213e;font:900 11px/20px var(--head);text-align:center;font-style:normal;box-shadow:0 2px 4px #0003;opacity:0;transition:.2s}.dk:hover .more{opacity:1}
+#ld.out{opacity:0;transition:opacity .45s;pointer-events:none}
+#mload{position:fixed;left:14px;bottom:86px;z-index:70;display:flex;align-items:center;gap:10px;background:rgba(22,33,62,.86);color:#fff;border-radius:999px;padding:6px 14px 6px 6px;font:700 12.5px var(--body);box-shadow:var(--shadow);backdrop-filter:blur(8px);transition:opacity .6s,transform .6s}
+#mload svg{width:34px;height:34px;transform:rotate(-90deg)}#mload b{font:800 13px var(--head);display:block}#mload.done{opacity:0;transform:translateY(12px);pointer-events:none}
+#menu #mload,body.menu #mload{bottom:16px}
 </style>
 </head>
 <body>
 <main id="main"></main>
-<div id="ld"><svg class="spool" viewBox="0 0 64 64"><use href="#i-logo"/></svg><div id="ldt">Loading detailed machine models…</div></div>
+<div id="ld"><svg class="spool" viewBox="0 0 64 64"><use href="#i-logo"/></svg><div id="ldt">Opening the mill…</div></div>
 <div id="chip" class="hidden"><svg class="logo" viewBox="0 0 64 64"><use href="#i-logo"/></svg><div><span id="plantName">My Plant</span><small id="scnName">Free play</small></div></div>
 <div id="bar" class="hidden"></div>
 <div id="z" class="hidden">

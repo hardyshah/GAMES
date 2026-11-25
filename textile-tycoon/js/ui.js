@@ -436,11 +436,18 @@ $('cNight').onclick=()=>setNight(!G.nightShift);$('cSkip').onclick=skipNight;
 // ---------------------------------------------------------------------
 // BOOT
 // ---------------------------------------------------------------------
-window.onModelsReady=function(){
+// detailed models stream in after the game is already playable: show a small, calm progress badge, never a blocking screen
+function loadBadge(){if($('mload'))return;const el=document.createElement('div');el.id='mload';el.title='The game is fully playable now. Machines switch to their detailed 3D models as each one arrives.';
+ el.innerHTML='<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="4"/><circle id="mlR" cx="18" cy="18" r="15" fill="none" stroke="#f6b93b" stroke-width="4" stroke-linecap="round" stroke-dasharray="94.2" stroke-dashoffset="94.2" style="transition:stroke-dashoffset .4s"/></svg><span><b>Adding machine detail</b><span id="mlT">0 of '+((window.modelProgress||{}).total||19)+' models</span></span>';
+ document.body.appendChild(el);const p=window.modelProgress;if(p)onModelLoaded(null,p.n,p.total)}
+window.onModelLoaded=function(f,n,total){const r=$('mlR'),t=$('mlT');if(!r)return;r.style.strokeDashoffset=94.2*(1-n/total);t.textContent=n+' of '+total+' models';
+ if(f&&UIS.inGame){const k=Object.keys(DEF).find(k=>{const g=DEF[k].glb;return g===f||(Array.isArray(g)&&g.some(p=>p.f===f))});const m=k&&machines.find(m=>m.type===k);if(m&&performance.now()-(UIS.lastUp||0)>900){UIS.lastUp=performance.now();const p=project(new THREE.Vector3(m.x,(m.def.h||4)+2,m.z));if(p)popAt(p.x,p.y,'✨ '+DEF[k].name,'pop')}}};
+window.onAllModels=function(){const el=$('mload');if(el){$('mlT').textContent='All machines in full detail';setTimeout(()=>el.classList.add('done'),1800);setTimeout(()=>el.remove(),2600)}setTimeout(makeThumbs,300)};
+window.onModelsReady=function(){if(UIS.booted)return;UIS.booted=true;
  // a demo plant turns slowly behind the title menu
  clearPlant();G=freshState();G.plantName='Demo plant';G.scenario='sandbox';G.stats={};applyCfg({});LAYOUTS.integrated.research.forEach(r=>G.research[r]=1);
  for(const q of LAYOUTS.integrated.ms)if(!rectOK(DEF[q[0]],q[1],q[2],q[3],null))addMachine(q[0],q[1],q[2],q[3]);G.workers=99;syncTrolleys();G.speed=1;
- showMenu();setTimeout(makeThumbs,400);
+ showMenu();loadBadge();
  (async()=>{try{dirH=await idbGet('dir')}catch(e){}})()};
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
  if(e.key==='Escape'){if($('ov')&&UIS.inGame){closeModal();return}if(UIS.panel&&!tool&&!sel){closePanel();return}}
@@ -451,4 +458,5 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
 setInterval(()=>{if(UIS.inGame)refreshStats()},120);
 // the engine status line only matters while placing or with a machine selected
 setInterval(()=>{if(UIS.inGame)refreshInfo()},400);
+if(window.engineReady)onModelsReady();
 })();

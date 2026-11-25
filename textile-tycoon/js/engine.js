@@ -285,19 +285,29 @@ const unlocked=k=>{const d=DEF[k];return !d.research||!!G.research[d.research]};
 
 // ---------- building models & placement ----------
 const MODELS={},MODEL_ERR={};
+// footprints measured from the detailed models, so placement is exact before they finish downloading
+const DIMS={"desize":[14,7,5.43],"bleach":[43,8,5.9],"station":[5,2,2.19],"chem":[5,4,3.23],"jet":[16,7,3.09],"jigger":[7,6,3.02],"kitchen":[6,3,2.35],"autokit":[20,6,4.16],"coater":[2,3,3.94],"laser":[9,3,2.59],"baby":[14,6,5.94],"rotary":[27,7,6.19],"flatbed":[29,6,4.2],"digital":[3,6,1.55],"stenter":[41,8,7.98],"bay":[3,7,1.29],"boiler":[6,4,3.1],"etp":[15,19,3.24],"qc":[7,5,3.42]};
+for(const k in DEF)DEF[k].key=k;for(const k in DIMS)if(DEF[k]){[DEF[k].w,DEF[k].d,DEF[k].h]=DIMS[k]}
 function buildModel(def){const outer=new T.Group(),inner=new T.Group();outer.add(inner);const A=[];
  const parts=def.glb?(typeof def.glb==='string'?[{f:def.glb,x:0,z:0}]:def.glb):[];
  if(parts.length&&parts.every(p=>MODELS[p.f])){for(const p of parts){const c=MODELS[p.f].clone();c.position.set(p.x||0,0,p.z||0);c.rotation.y=p.ry||0;inner.add(c)}
   const ph=def.ph||['Running'];A.push((t,dt,m)=>{const f=m&&def.time?m.progress/def.time:(t/20)%1;A.status=ph[Math.min(ph.length-1,Math.floor(f*ph.length))]+(def.time?' · '+Math.round(f*100)+'%':'')})}
- else{def.b(inner,A);if(def.sc)inner.scale.set(...def.sc)}
+ else{def.b(inner,A);if(def.sc)inner.scale.set(...def.sc);
+  if(DIMS[def.key]){inner.updateMatrixWorld(true);const b0=new T.Box3().setFromObject(inner),s0=b0.getSize(new T.Vector3()),[W,D,H]=DIMS[def.key];inner.scale.multiply(new T.Vector3(Math.max(.2,(W-.3)/Math.max(.1,s0.x)),Math.max(.2,H/Math.max(.1,s0.y)),Math.max(.2,(D-.3)/Math.max(.1,s0.z))))}}
  inner.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(inner),c=bb.getCenter(new T.Vector3()),s=bb.getSize(new T.Vector3());
  inner.position.x-=c.x;inner.position.z-=c.z;inner.position.y-=Math.min(0,bb.min.y);if(!def.w){def.w=Math.ceil(s.x+.3);def.d=Math.ceil(s.z+.3);def.h=s.y}return{outer,A}}
 // load a library model (base64 gzip GLB) and merge its meshes by material so a plant full of detailed machines stays fast
 const MODEL_SCALE={batching_trolley:.001};
-async function loadModel(f){const r=await fetch('models/'+f+'.txt');if(!r.ok)throw new Error(f+' missing');const bin=Uint8Array.from(atob((await r.text()).trim()),ch=>ch.charCodeAt(0));
- const buf=await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+// quantized models (KHR_mesh_quantization) store positions/normals/uvs as integers: turn them back into floats before merging
+function deq(g){const get=['getX','getY','getZ','getW'];for(const k of Object.keys(g.attributes)){const a=g.attributes[k],arr=a.isInterleavedBufferAttribute?a.data.array:a.array;if(!a.isInterleavedBufferAttribute&&arr instanceof Float32Array)continue;
+  const n=a.count,sz=a.itemSize,out=new Float32Array(n*sz),signed=arr instanceof Int8Array||arr instanceof Int16Array;
+  const div=!a.normalized?1:arr instanceof Int8Array?127:arr instanceof Uint8Array?255:arr instanceof Int16Array?32767:arr instanceof Uint16Array?65535:1;
+  for(let i=0;i<n;i++)for(let c=0;c<sz;c++){let v=a[get[c]](i)/div;if(signed&&div!==1)v=Math.max(-1,v);out[i*sz+c]=v}
+  g.setAttribute(k,new T.BufferAttribute(out,sz))}return g}
+async function loadModel(f){const r=await fetch('models/'+f+'.glb.gz');if(!r.ok)throw new Error(f+' missing');
+ const buf=await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
  const scene=await new Promise((res,rej)=>new T.GLTFLoader().parse(buf,'',g=>res(g.scene),rej));scene.updateMatrixWorld(true);
- const groups=new Map();scene.traverse(o=>{if(!o.isMesh||!o.geometry)return;let g=o.geometry.clone();g.applyMatrix4(o.matrixWorld);for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.normal)g.computeVertexNormals();if(g.index)g=g.toNonIndexed();
+ const groups=new Map();scene.traverse(o=>{if(!o.isMesh||!o.geometry)return;let g=deq(o.geometry.clone());g.applyMatrix4(o.matrixWorld);for(const k of Object.keys(g.attributes))if(!['position','normal','uv'].includes(k))g.deleteAttribute(k);if(!g.attributes.normal)g.computeVertexNormals();if(g.index)g=g.toNonIndexed();
   const mt=Array.isArray(o.material)?o.material[0]:o.material,key=mt.uuid+'|'+Object.keys(g.attributes).sort().join(',');if(!groups.has(key))groups.set(key,{mt,gs:[]});groups.get(key).gs.push(g)});
  const out=new T.Group();for(const{mt,gs}of groups.values()){const mg=T.BufferGeometryUtils.mergeBufferGeometries(gs,false);if(!mg)continue;if(MODEL_SCALE[f])mg.scale(MODEL_SCALE[f],MODEL_SCALE[f],MODEL_SCALE[f]);const m=new T.Mesh(mg,mt);m.castShadow=m.receiveShadow=!mt.transparent;if(mt.transparent)mt.depthWrite=false;out.add(m)}
  return out}
@@ -320,6 +330,8 @@ function addMachine(type,x,z,rot,o){o=o||{};const def=DEF[type];const{outer,A}=b
  if(type!=='bay'){const w=mkWorker(uniformFor(m));w.root.position.set(0,0,(def.d||4)/2+.6);w.root.rotation.y=PI;outer.add(w.root);m.op=w}
  m.lab=new T.Sprite(new T.SpriteMaterial({depthTest:false,transparent:true}));m.lab.scale.set(7.2,1.12,1);m.lab.position.set(0,(def.h||4)+1.4,0);m.lab.renderOrder=8;m.lab.raycast=()=>{};m.lab.visible=showLabels;outer.add(m.lab);
  machines.push(m);if(o.col)paint(m,o.col);return m}
+function swapModel(m){const{outer,A}=buildModel(m.def);const ni=outer.children[0];m.g.remove(m.g.children[0]);m.g.add(ni);m.g.children.unshift(m.g.children.pop());m.A=A;m.mats=null;
+ m.g.traverse(q=>{q.userData.mid=m.id});if(m.col)paint(m,m.col);if(sel===m&&typeof syncHL==='function')syncHL()}
 function removeMachine(m){S.remove(m.g);if(m.op)WKS.splice(WKS.indexOf(m.op),1);machines=machines.filter(q=>q!==m);if(sel===m)select(null)}
 
 // ---------- painting (machine editor) ----------
@@ -396,7 +408,7 @@ function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_
  if(MODELS[f]){const c=MODELS[f].clone();if(kind!=='drum')c.rotation.y=PI/2;g.add(c)}else{const b=batcher(g,{col:0x1f6fd0,fab:0x1b2a4a,r:.55});b.scale.setScalar(.75);b.rotation.y=PI/2}
  g.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(g),c=bb.getCenter(new T.Vector3());g.children.forEach(o=>{o.position.x-=c.x;o.position.z-=c.z});g.userData.len=bb.getSize(new T.Vector3()).z;return g}
 function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length,k=Object.keys(LOOPS).find(q=>LOOPS[q]===L),r=RULES.loops[k];return Math.min(r.max,r.start+Math.floor(bays*r.perBay))}
-function syncTrolleys(){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
+function syncTrolleys(force){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(!force&&movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
  for(const v of movers){MOV.remove(v.tr);v.ws.forEach(w=>{MOV.remove(w.root);WKS.splice(WKS.indexOf(w),1)})}movers=[];
  for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const tot=Math.min(RULES.maxLoad,L.loads[i%L.loads.length]+L.tare),np=crewFor(tot);
   const lt=loadTag(tot+' kg · '+np+(np>1?' people':' person'));lt.position.y=2.2;tr.add(lt);
@@ -618,9 +630,15 @@ addEventListener('resize',onResize);
 // =====================================================================
 G=freshState();
 upgrade();initFX();applyFX();
-(async()=>{const files=[...new Set(Object.values(DEF).flatMap(d=>!d.glb?[]:typeof d.glb==='string'?[d.glb]:d.glb.map(p=>p.f)))];let n=0;
- await Promise.all(files.map(f=>loadModel(f).then(m=>{MODELS[f]=m}).catch(e=>{MODEL_ERR[f]=1;console.warn('model',f,e)}).finally(()=>{n++;$('ld').textContent='Loading detailed machine models… '+n+' / '+files.length})));
- $('ld').remove();onResize();if(window.onModelsReady)onModelsReady()})();
+{const l=$('ld');l.classList.add('out');setTimeout(()=>l.remove(),500)}onResize();window.engineReady=true;if(window.onModelsReady)onModelsReady();
+// stream the detailed models in the background: most-used and smallest first, 4 at a time; each machine upgrades the moment its model arrives
+(async()=>{const PRI=['station','chem','jet','kitchen','coater','baby','stenter','bay','boiler','desize','bleach','jigger','qc','rotary','flatbed','autokit','laser','digital','etp'];
+ const files=[...new Set(PRI.concat(Object.keys(DEF)).filter(k=>DEF[k]&&DEF[k].glb).flatMap(k=>{const d=DEF[k];return typeof d.glb==='string'?[d.glb]:d.glb.map(p=>p.f)}))];
+ let n=0,q=files.slice();const total=files.length;window.modelProgress={n:0,total};
+ const done=f=>{n++;window.modelProgress={n,total};for(const m of machines){const g=m.def.glb,parts=typeof g==='string'?[g]:(g||[]).map(p=>p.f);if(parts.includes(f)&&parts.every(x=>MODELS[x]))swapModel(m)}
+  if(f==='batching_trolley'||f==='colour_drum_trolley')syncTrolleys(true);if(window.onModelLoaded)onModelLoaded(f,n,total)};
+ const worker=async()=>{while(q.length){const f=q.shift();try{MODELS[f]=await loadModel(f)}catch(e){MODEL_ERR[f]=1;console.warn('model',f,e)}done(f);await new Promise(r=>setTimeout(r,0))}};
+ await Promise.all([worker(),worker(),worker(),worker()]);if(window.onAllModels)onAllModels()})();
 let last=performance.now(),TT=0,uiLast=0;
 (function loop(n){requestAnimationFrame(loop);const rdt=Math.min(.05,(n-last)/1000);last=n;const gdt=G.paused?0:rdt*G.speed;
  if(gdt>0&&machines.length){sim(gdt*(window.shiftRate||1));TT+=gdt;for(const m of machines)if(m.op){const w=m.op,pose=m.broken?'kneel':m.running?(m.type==='qc'?'inspect':m.def.util?'stand':'panel'):'stand';w.root.visible=m.def.util||m.worker||m.broken;resetPose(w);if(w.sp)w.sp.visible=pose==='kneel';if(pose==='kneel')spanner(w).visible=true;POSES[pose](w,TT+w.ph)}for(const m of machines)if(m.running){m.mt+=gdt;for(const f of m.A)f(m.mt,gdt,m)}GA.forEach(f=>f(TT,gdt))}
