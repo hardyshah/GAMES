@@ -8,8 +8,10 @@
 'use strict';
 const ico=(n,cls)=>`<svg viewBox="0 0 64 64"${cls?` class="${cls}"`:''}><use href="#${n}"/></svg>`;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const money=n=>(n<0?'-$':'$')+Math.abs(Math.round(n)).toLocaleString('en-US');
-const short=n=>{const a=Math.abs(n),s=n<0?'-':'';return a>=1e6?s+'$'+(a/1e6).toFixed(1)+'M':a>=1e4?s+'$'+Math.round(a/1e3)+'K':s+'$'+Math.round(a).toLocaleString('en-US')};
+const curNow=()=>{const e=(typeof G!=='undefined'&&G)?G.econ:null;if(!e||e.cur!=='local'||typeof COUNTRIES==='undefined')return{sym:'$',fx:1};const C=COUNTRIES[e.country];return{sym:C.sym||C.cur+' ',fx:C.fx}};
+const money=n=>{const c=curNow(),v=n*c.fx;return (v<0?'-':'')+c.sym+Math.abs(Math.round(v)).toLocaleString('en-US')};
+const short=n=>{const c=curNow(),v=n*c.fx,a=Math.abs(v),s=v<0?'-':'';return a>=1e9?s+c.sym+(a/1e9).toFixed(1)+'B':a>=1e6?s+c.sym+(a/1e6).toFixed(1)+'M':a>=1e4?s+c.sym+Math.round(a/1e3)+'K':s+c.sym+Math.round(a).toLocaleString('en-US')};
+window.fmtMoney=money;
 const UIS={panel:null,inGame:false,cashShown:0,thumbs:{},cat:'all',slot:null,lastPop:{},popCount:0,ended:false};
 window.menuOrbit=false;
 
@@ -55,12 +57,12 @@ function confetti(on){const cv=$('confetti');if(!on){cv.classList.add('hidden');
  let n=0;(function f(){g.clearRect(0,0,cv.width,cv.height);P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;if(p.y>cv.height+20){p.y=-20;p.x=Math.random()*cv.width}g.save();g.translate(p.x,p.y);g.rotate(p.r);g.fillStyle=p.c;g.fillRect(-p.w/2,-3,p.w,6);g.restore()});if(++n<420&&!cv.classList.contains('hidden'))requestAnimationFrame(f);else cv.classList.add('hidden')})()}
 
 // production pops above machines, coins on delivery, month banner
-window.onProduce=function(m){if(!UIS.inGame||m.def.util)return;const now=performance.now();if(now-(UIS.lastPop[m.id]||0)<1800||UIS.popCount>6)return;UIS.lastPop[m.id]=now;
+window.onProduce=function(m){if(G&&UIS.inGame&&maybeReject(m))return;if(G&&G.fin&&!m.def.util)G.fin.today.lots++;if(!UIS.inGame||m.def.util)return;const now=performance.now();if(now-(UIS.lastPop[m.id]||0)<1800||UIS.popCount>6)return;UIS.lastPop[m.id]=now;
  const v=new THREE.Vector3(m.x,(m.def.h||4)+2.2,m.z),p=project(v);if(!p||p.x<0||p.y<0||p.x>innerWidth||p.y>innerHeight-170)return;
  const out=m.def.stenter?(m.lot==='printed'?'Finished printed':'Finished dyed'):MAT[Object.keys(m.def.out)[0]]||'';UIS.popCount++;setTimeout(()=>UIS.popCount--,1900);popAt(p.x,p.y,'+1 '+out)};
-window.onDeliver=function(o){const st=G.stats=G.stats||{};st.revenue=(st.revenue||0)+o.reward;st[o.type]=(st[o.type]||0)+o.qty;if(o.exp)st.exports=(st.exports||0)+1;st.monthRev=(st.monthRev||0)+o.reward;
+window.onDeliver=function(o){book('orders',o.reward);econDeliver(o);finState().today.del++;const st=G.stats=G.stats||{};st.revenue=(st.revenue||0)+o.reward;st[o.type]=(st[o.type]||0)+o.qty;if(o.exp)st.exports=(st.exports||0)+1;st.monthRev=(st.monthRev||0)+o.reward;
  const x=innerWidth/2,y=innerHeight/2-40;coinBurst(x,y);popAt(x,y-20,'+'+money(o.reward),'bigpop');checkGoals()};
-window.onMonth=function(cost){if(G.nightShift){const x=G.workers*(G.wage||600)*.4;G.money-=x;cost+=x}const st=G.stats=G.stats||{};st.lastRev=st.monthRev||0;st.monthRev=0;banner(monthName(G.month),'running costs −'+money(cost));checkGoals();renderDock()};
+window.onMonth=function(cost){if(G.nightShift){const x=G.workers*(G.wage||600)*.4;G.money-=x;cost+=x}recordMonth(cost);finMonth(cost);riskMonth();econMonth();machines.forEach(m=>m.age=(m.age||0)+1);const st=G.stats=G.stats||{};st.lastRev=st.monthRev||0;st.monthRev=0;banner(monthName(G.month),'running costs −'+money(cost));checkGoals();renderDock()};
 
 // ---------------------------------------------------------------------
 // STATUS BAR + DOCK
@@ -87,7 +89,7 @@ const quickSave=()=>{if(UIS.slot&&UIS.slot!=='auto'){const en=index().find(s=>s.
 const DOCKSUB={save:()=>[[quickSave,'i-save','Quick save','Ctrl+S'],[()=>openSaves('save'),'i-save','Save as…','New compressed slot'],[()=>openSaves('load'),'i-load','Load game',index().length+' saves'],[linkFolder,'i-folder','Saves folder','Write every save to a folder']],
  menu:()=>[[()=>openGameMenu(),'i-menu','Game menu','Pause & options'],[()=>openWizard(),'i-new','New game','Scenario, layout, sheet'],[()=>openHelp(),'i-help','How to play',''],[()=>{saveSlot('auto','Autosave',true);showMenu()},'i-logo','Main menu','Autosaves first']],
  views:()=>VIEWS.slice(0,8).map((v,i)=>[()=>go(i),'i-views',v[0],'']).concat([[()=>{UIS.sub.views='dsp';togglePanel('views')},'i-views','Time of day…','Morning, noon, sunset, night']]),
- staff:()=>[[()=>{UIS.sub.staff='op';togglePanel('staff')},'i-staff','Operators','Hire and dismiss'],[()=>{UIS.sub.staff='sh';togglePanel('staff')},'i-staff','Shifts','Day, night, skip to morning'],[()=>setNight(!G.nightShift),'i-staff',G.nightShift?'Stop night shift':'Start night shift','+40% wages']],
+ staff:()=>[[()=>{UIS.sub.staff='op';togglePanel('staff')},'i-staff','Operators','Hire and dismiss'],[()=>openOrg(),'i-staff','Organisation chart','Names & salaries by country'],[()=>{UIS.sub.staff='sh';togglePanel('staff')},'i-staff','Shifts','Day, night, skip to morning'],[()=>setNight(!G.nightShift),'i-staff',G.nightShift?'Stop night shift':'Start night shift','+40% wages']],
  finance:()=>[['ov','Overview'],['mk','Market'],['ln','Loans']].map(([k,t])=>[()=>{UIS.sub.finance=k;UIS.panel=null;togglePanel('finance')},'i-finance',t,''])};
 function renderDock(){const d=$('dock');if(!d.children.length){d.innerHTML=DOCK.map(([k,i,l])=>`<button class="dk" data-p="${k}" title="${l}">${ico(i)}<span>${l}</span></button>`).join('');
   d.querySelectorAll('.dk').forEach(b=>{const k=b.dataset.p;if(DOCKSUB[k]){const a=document.createElement('i');a.className='more';a.textContent='▴';a.title='More';b.appendChild(a);
@@ -107,7 +109,7 @@ function closePanel(){UIS.panel=null;$('panel').classList.add('hidden');renderDo
 $('pClose').onclick=closePanel;
 function stockRow(keys){return '<div class="stockrow">'+keys.map(k=>`<span class="stk">${MAT[k]} <b>${+G.inv[k].toFixed(1)}</b></span>`).join('')+'</div>'}
 function recipe(d){if(d.stenter)return 'Dyed or printed → finished';if(d.util)return d.desc.split('.')[0];const i=Object.keys(d.need).map(k=>MAT[k]).join(' + ');return (i?i+' → ':'Makes ')+Object.keys(d.out).map(k=>MAT[k]).join('')}
-const SUBS={finance:[['ov','Overview'],['mk','Market'],['ln','Loans']],staff:[['op','Operators'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Settings']],views:[['cam','Cameras'],['dsp','Display & time']]};
+const SUBS={finance:[['ov','Overview'],['st','Statements'],['mk','Market'],['ln','Loans'],['cs','Consultant']],staff:[['op','Operators'],['org','Organisation'],['rk','Quality & security'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Country, costs & rules']],views:[['cam','Cameras'],['dsp','Display & time']]};
 UIS.sub={};const subOf=k=>UIS.sub[k]||(SUBS[k]?SUBS[k][0][0]:'');
 function subBar(k){return SUBS[k]?'<div class="sub">'+SUBS[k].map(([i,t])=>`<button data-u="sub" data-k="${i}" class="${subOf(k)===i?'on':''}">${t}</button>`).join('')+'</div>':''}
 window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');let h=subBar(k);const sb=subOf(k);
@@ -127,12 +129,12 @@ window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');
   if(sb==='ov')h+=`<div class="kpis"><div class="kpi"><span>Cash</span><b class="${G.money<0?'down':''}">${money(G.money)}</b></div><div class="kpi"><span>Revenue to date</span><b class="up">${short((G.stats&&G.stats.revenue)||G.revenue)}</b></div><div class="kpi"><span>Upkeep / month</span><b>${short(up)}</b></div><div class="kpi"><span>Wages / month</span><b>${short(wages)}</b></div><div class="kpi"><span>Loan</span><b>${short(G.loan)}</b></div><div class="kpi"><span>Greige / lot</span><b>${money(G.greige)}</b></div></div>`;
   const hist=G.hist.slice(-12),mx=Math.max(1,...hist.map(x=>x.cost));if(sb==='ov')h+=`<div class="card"><h4>Monthly running costs</h4>${hist.length?`<svg viewBox="0 0 360 90" style="width:100%;height:90px">${hist.map((x,i)=>`<rect x="${i*30+4}" y="${84-x.cost/mx*74}" width="22" height="${x.cost/mx*74}" rx="5" fill="url(#gO)"><animate attributeName="height" from="0" to="${x.cost/mx*74}" dur=".6s"/><animate attributeName="y" from="84" to="${84-x.cost/mx*74}" dur=".6s"/></rect>`).join('')}</svg>`:'<div class="mut">Shows after the first month.</div>'}</div>`;
   if(sb==='mk')h+=stockRow(['greige','fd','fp'])+`<div class="card"><h4>Greige market</h4><div class="row"><button class="btn gold sm" data-a="buy" data-k="10" ${G.money<G.greige*10?'disabled':''}>Buy 10 lots · ${short(G.greige*10)}</button><button class="btn gold sm" data-a="buy" data-k="30" ${G.money<G.greige*30?'disabled':''}>Buy 30 lots · ${short(G.greige*30)}</button></div></div>
-   <div class="card"><h4>Spot market</h4><div class="mut">Pays less than orders, but turns stock into cash now.</div><div class="row"><button class="btn sm" data-a="spot" data-k="fd" ${G.inv.fd<1?'disabled':''}>Sell finished dyed · $550/lot</button><button class="btn sm" data-a="spot" data-k="fp" ${G.inv.fp<1?'disabled':''}>Sell finished printed · $800/lot</button></div></div>`;if(sb==='ln')h+=`<div class="card"><h4>Bank loan · 1% a month</h4><div class="bar2 gold"><i style="width:${G.loan/1000}%"></i></div><div class="row"><button class="btn ghost sm" data-a="borrow" ${G.loan>=100000?'disabled':''}>Borrow $10,000</button><button class="btn ghost sm" data-a="repay" ${G.loan<10000||G.money<10000?'disabled':''}>Repay $10,000</button></div></div>`}
+   <div class="card"><h4>Spot market</h4><div class="mut">Pays less than orders, but turns stock into cash now.</div><div class="row"><button class="btn sm" data-a="spot" data-k="fd" ${G.inv.fd<1?'disabled':''}>Sell finished dyed · $550/lot</button><button class="btn sm" data-a="spot" data-k="fp" ${G.inv.fp<1?'disabled':''}>Sell finished printed · $800/lot</button></div></div>`;if(sb==='st'){const f=finState(),P=plOf(f.months[G.month],G.month),last=Object.keys(f.months).map(Number).filter(m=>m<G.month).pop(),PL=last!=null?plOf(f.months[last],last):null,B=bsNow();h+=`<div class="kpis"><div class="kpi"><span>Revenue this month</span><b class="up">${short(P.rev)}</b></div><div class="kpi"><span>Net profit this month</span><b class="${P.net<0?'down':'up'}">${short(P.net)}</b></div><div class="kpi"><span>Last month net</span><b class="${PL&&PL.net<0?'down':'up'}">${PL?short(PL.net):'—'}</b></div><div class="kpi"><span>Owner’s equity</span><b>${short(B.equity)}</b></div></div><div class="card"><h4>Statements</h4><div class="mut">Profit &amp; loss, cash flow and balance sheet month by month, plus a daily log.</div><div class="row">${[['pl','Profit & loss'],['cf','Cash flow'],['bs','Balance sheet'],['day','Daily log']].map(([k,t])=>`<button class="btn sm ${k==='pl'?'green':'ghost'}" data-u="stm" data-k="${k}">${t}</button>`).join('')}</div></div>`}if(sb==='cs')h+=consultHTML()+`<div class="row"><button class="btn ghost sm" data-u="rev">📈 Revenue graph</button></div>`;if(sb==='ln')h+=`<div class="card"><h4>Bank loan · 1% a month</h4><div class="bar2 gold"><i style="width:${G.loan/1000}%"></i></div><div class="row"><button class="btn ghost sm" data-a="borrow" ${G.loan>=100000?'disabled':''}>Borrow $10,000</button><button class="btn ghost sm" data-a="repay" ${G.loan<10000||G.money<10000?'disabled':''}>Repay $10,000</button></div></div>`}
  else if(k==='staff'){const prod=machines.filter(m=>!m.def.util),need=prod.length,handlers=movers.reduce((a,v)=>a+v.np,0);
   if(sb==='op')h+=`<div class="kpis"><div class="kpi"><span>Operators</span><b>${G.workers}</b></div><div class="kpi"><span>Machines needing one</span><b class="${G.workers<need?'down':''}">${need}</b></div><div class="kpi"><span>Wage</span><b>${money(G.wage||600)}/mo</b></div><div class="kpi"><span>Trolley handlers</span><b>${handlers}</b></div></div>
    <div class="card"><h4>Hire operators</h4><div class="mut">Each production machine needs one operator. Hiring costs $1,500 plus the monthly wage.</div><div class="row"><button class="btn green sm" data-a="hire" ${G.money<1500?'disabled':''}>👷 Hire operator</button><button class="btn ghost sm" data-a="fire" ${G.workers<1?'disabled':''}>Dismiss one</button></div></div>
-   <div class="card"><h4>Who is working</h4>${prod.map(m=>`<div class="row" style="margin:3px 0"><span class="dot" style="background:${m.broken?'#ef476f':m.worker?(m.running?'#2ec27e':'#f6b93b'):'#9aa3b5'}"></span><span style="flex:1">${esc(m.name)}</span><span class="mut">${m.broken?'broken':m.worker?(m.running?'running':'waiting'):'no operator'}</span></div>`).join('')||'<div class="mut">No production machines yet.</div>'}</div>`;if(sb==='sh')h+=shiftHTML();if(sb==='un')h+=`<div class="card"><h4>Uniforms</h4><div class="row">${Object.values(UNI).map(u=>`<span class="stk"><span class="dot" style="background:#${u[1].toString(16).padStart(6,'0')}"></span>${u[0]}</span>`).join('')}</div></div>`}
- else if(k==='rules'&&sb==='st'){h+=settingsHTML()}
+   <div class="card"><h4>Who is working</h4>${prod.map(m=>`<div class="row" style="margin:3px 0"><span class="dot" style="background:${m.broken?'#ef476f':m.worker?(m.running?'#2ec27e':'#f6b93b'):'#9aa3b5'}"></span><span style="flex:1">${esc(m.name)}</span><span class="mut">${m.broken?'broken':m.worker?(m.running?'running':'waiting'):'no operator'}</span></div>`).join('')||'<div class="mut">No production machines yet.</div>'}</div>`;if(sb==='org'){const pp=orgBuild(),t=orgTotals(pp),C=COUNTRIES[orgState().country];h+=`<div class="card"><h4>Organisation chart</h4><div class="mut">${pp.length} staff and managers above ${G.workers} operators · names and pay typical for ${C.n}.</div><div class="kpis" style="margin-top:8px"><div class="kpi"><span>Staff payroll</span><b>${orgMoney(t.staff)}/mo</b></div><div class="kpi"><span>All payroll</span><b>${orgMoney(t.all)}/mo</b></div></div><div class="row"><button class="btn green sm" data-u="org">🏢 Open organisation chart</button></div></div>`+pp.slice(0,6).map(p=>`<div class="row" style="margin:4px 0"><span class="dot" style="background:${ORGC[p.grp]}"></span><span style="flex:1"><b>${esc(p.name)}</b> · ${esc(p.title)}</span><span class="mut">${orgMoney(p.usd)}</span></div>`).join('')}if(sb==='rk')h+=riskHTML();if(sb==='sh')h+=shiftHTML();if(sb==='un')h+=`<div class="card"><h4>Uniforms</h4><div class="row">${Object.values(UNI).map(u=>`<span class="stk"><span class="dot" style="background:#${u[1].toString(16).padStart(6,'0')}"></span>${u[0]}</span>`).join('')}</div></div>`}
+ else if(k==='rules'&&sb==='st'){h+=econHTML()+settingsHTML()}
  else if(k==='rules'){const c=G.cfg||{};h+=`<div class="kpis"><div class="kpi"><span>Trolley speed</span><b>${RULES.speed} m/s</b></div><div class="kpi"><span>Max trolley load</span><b>${RULES.maxLoad} kg</b></div><div class="kpi"><span>Month length</span><b>${MONTH} s</b></div><div class="kpi"><span>Breakdowns</span><b>${((G.brk!=null?G.brk:.025)*100).toFixed(1)}%/mo</b></div></div>`;
   RULES.text.forEach((r,i)=>h+=`<div class="card" style="animation-delay:${i*35}ms"><h4>${esc(r[0])}</h4>${esc(r[1])}<div class="mut">Where: ${esc(r[2])}</div></div>`);
   (c.rules||[]).forEach(r=>h+=`<div class="card" style="border-color:#c5a8ff"><h4>${esc(r[0])} <span class="mut">· from your sheet</span></h4>${esc(r[1])}${r[2]?`<div class="mut">${esc(r[2])}</div>`:''}</div>`)}
@@ -151,6 +153,12 @@ $('tc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b
  if(b.dataset.u==='cat'){UIS.cat=b.dataset.k;renderTab()}
  if(b.dataset.u==='sub'){UIS.sub[UIS.panel]=b.dataset.k;renderTab()}
  if(b.dataset.u==='tod'){const v=b.dataset.k;if(v==='auto')DN.lock=null;else DN.lock=+v;renderTab()}
+ if(b.dataset.rk){const r=riskS();r[b.dataset.rk]=+b.dataset.rv;const L=b.dataset.rk==='maint'?MAINT:SEC;toast((b.dataset.rk==='maint'?'🛠 ':'🛡 ')+L[+b.dataset.rv][0]+(L[+b.dataset.rv][2]?' — '+money(L[+b.dataset.rv][2])+'/mo':''));renderTab()}
+ if(b.dataset.u==='org'){openOrg()}
+ if(b.dataset.u==='rev'){openRevenue()}
+ if(b.dataset.c){runConsult(b.dataset.c,$('tc'))}
+ if(b.dataset.ap){applyRec(+b.dataset.ap)}
+ if(b.dataset.u==='stm'){openStatements(b.dataset.k)}
  if(b.dataset.u==='ns'){setNight(!G.nightShift);renderTab()}
  if(b.dataset.u==='skip'){skipNight()}
  if(b.dataset.u==='view'){go(+b.dataset.k);closePanel()}
@@ -262,6 +270,8 @@ function renderWizard(){const st=WZ.step,s=scn(WZ.scenario);
  if(st===3){const prod=layoutMS().filter(q=>DEF[q[0]]&&!DEF[q[0]].util).length;
   body=`<div class="form">
    <div class="fld"><label>Plant name</label><input type="text" id="wName" value="${esc(WZ.name)}"></div>
+   <div class="fld"><label>Country (staff names &amp; salaries)</label><select id="wCountry" style="font:700 15px var(--body);border:2px solid var(--line);border-radius:12px;padding:8px">${Object.entries(COUNTRIES).map(([k,c])=>`<option value="${k}" ${k===(WZ.country||'IN')?'selected':''}>${c.n}</option>`).join('')}</select></div>
+   <div class="fld"><label>Show money in</label><select id="wCur" style="font:700 15px var(--body);border:2px solid var(--line);border-radius:12px;padding:8px"><option value="local" ${WZ.cur!=='usd'?'selected':''}>${COUNTRIES[WZ.country||'IN'].cur} (local)</option><option value="usd" ${WZ.cur==='usd'?'selected':''}>US dollars</option></select><button class="btn ghost sm" id="wTypW" style="margin-top:6px">Typical operator wage in ${COUNTRIES[WZ.country||'IN'].n}: $${COUNTRIES[WZ.country||'IN'].op}/mo</button></div>
    ${rng('cash','Starting cash',-50000,400000,5000,v=>money(v))}
    ${rng('operators','Operators (labour)',0,60,1,v=>v+' <span class="mut">· '+prod+' machines need one</span>')}
    ${rng('wage','Wage per operator',300,1500,50,v=>money(v)+'/mo')}
@@ -277,6 +287,7 @@ function renderWizard(){const st=WZ.step,s=scn(WZ.scenario);
  o.querySelectorAll('input[type=range]').forEach(r=>r.oninput=()=>{WZ[r.dataset.r]=+r.value;r.parentElement.querySelector('b').innerHTML=r._fmt(r.value)});
  o.querySelectorAll('input[type=range]').forEach(r=>{const f=RF[r.dataset.r];r._fmt=f});
  o.querySelectorAll('[data-t]').forEach(c=>c.onchange=()=>WZ[c.dataset.t]=c.checked);
+ const wc=o.querySelector('#wCountry');if(wc)wc.onchange=()=>{WZ.country=wc.value;renderWizard()};const wcu=o.querySelector('#wCur');if(wcu)wcu.onchange=()=>WZ.cur=wcu.value;const wtw=o.querySelector('#wTypW');if(wtw)wtw.onclick=()=>{WZ.wage=COUNTRIES[WZ.country||'IN'].op;renderWizard()};
  const nm=o.querySelector('#wName');if(nm)nm.oninput=()=>WZ.name=nm.value;
  const up=o.querySelector('#upf');if(up)up.onchange=e=>readSheet(e.target.files[0]);
  const dr=o.querySelector('#drop');if(dr){dr.ondragover=e=>{e.preventDefault();dr.classList.add('hot')};dr.ondragleave=()=>dr.classList.remove('hot');dr.ondrop=e=>{e.preventDefault();dr.classList.remove('hot');if(e.dataTransfer.files[0])readSheet(e.dataTransfer.files[0])}}
@@ -316,7 +327,7 @@ async function readSheet(file){if(!file)return;if(!window.XLSX){toast('⚠️ Th
   WZ.custom={name:out.name,ms:placed,rules:out.rules,skipped:out.skipped,loops:out.loops};WZ.rules=out.rules;
   const c=num('cash'),op=num('operator','worker','labour','labor'),wg=num('wage'),mo=num('month'),sp=num('speed')||out.speed,ml=num('load'),bk=num('breakdown');
   if(c!=null)WZ.cash=c;WZ.operators=op!=null?op:placed.filter(q=>!DEF[q[0]].util).length;if(wg)WZ.wage=wg;if(mo)WZ.month=mo;if(sp)WZ.speed=sp;if(ml)WZ.maxLoad=Math.min(300,ml);if(bk!=null)WZ.brk=bk;
-  for(const s in S2){const v=String(S2[s]).toLowerCase();if(s.includes('boiler'))WZ.boiler=v==='yes'||v==='true'||v==='1';if(s.includes('qc')||s.includes('inspection'))WZ.qc=v==='yes'||v==='true'||v==='1';if(s.includes('etp'))WZ.etp=v==='yes'||v==='true'||v==='1';if(s==='plant name'||s==='name')WZ.name=S2[s]}
+  for(const s in S2){const v=String(S2[s]).toLowerCase();if(s.includes('boiler'))WZ.boiler=v==='yes'||v==='true'||v==='1';if(s.includes('qc')||s.includes('inspection'))WZ.qc=v==='yes'||v==='true'||v==='1';if(s.includes('etp'))WZ.etp=v==='yes'||v==='true'||v==='1';if(s==='plant name'||s==='name')WZ.name=S2[s];if(s.includes('country')){const v=String(S2[s]).toLowerCase();const k=Object.keys(COUNTRIES).find(k=>k.toLowerCase()===v||COUNTRIES[k].n.toLowerCase()===v);if(k)WZ.country=k}}
   toast('📊 Read '+placed.length+' machines'+(out.rules.length?', '+out.rules.length+' rules':'')+' from “'+file.name+'”');renderWizard()}
  catch(e){console.error(e);toast('⚠️ Could not read that file — use the template for the expected columns')}}
 function downloadTemplate(){if(!window.XLSX){toast('⚠️ The sheet writer did not load');return}const wb=XLSX.utils.book_new();
@@ -340,8 +351,8 @@ function startGame(c){closeModal();hideMenu();const s=scn(c.scenario);clearPlant
  for(const q of ms){if(!DEF[q[0]]){skipped++;continue}if(rectOK(DEF[q[0]],q[1],q[2],q[3]||0,null)){skipped++;continue}addMachine(q[0],q[1],q[2],q[3]||0,q[4]?{name:q[4]}:undefined)}
  const util=[['boiler',c.boiler,[72,-26]],['qc',c.qc,[-8,32]],['etp',c.etp,[80,26]]];
  for(const[t,on,p]of util){if(!on||machines.some(m=>m.type===t))continue;if(t==='etp')G.research.etp=1;let at=p;if(rectOK(DEF[t],p[0],p[1],0,null)){const sp=autoSpot(t,machines.map(m=>[m.type,m.x,m.z,m.rot]));if(!sp){toast('⚠️ No room for the '+DEF[t].name);continue}at=sp}addMachine(t,at[0],at[1],0)}
- G.workers=c.operators;G.nightShift=!!c.night;G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
- syncTrolleys();newOrder();newOrder();UIS.cashShown=G.money;UIS.slot=null;enterGame();go(0);
+ G.workers=c.operators;G.nightShift=!!c.night;G.org={country:c.country||'IN'};G.econ=econDefaults(c.country||'IN');G.econ.cur=c.cur==='usd'?'usd':'local';G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
+ syncTrolleys();newOrder();newOrder();G.fin=null;finState();UIS.rep=null;UIS.cashShown=G.money;UIS.slot=null;enterGame();go(0);
  banner('Welcome to '+G.plantName,s.name);if(skipped)toast('⚠️ '+skipped+' machines did not fit and were left out');
  if(s.goals.length)setTimeout(()=>togglePanel('goals'),900)}
 function enterGame(){UIS.inGame=true;window.menuOrbit=false;G.paused=false;if(!G.speed)G.speed=1;['chip','bar','z','info','dock','status','clock','tutBtn'].forEach(id=>$(id)&&$(id).classList.remove('hidden'));closeModal();renderDock();refreshStats();renderTab();if(UIS.panel)renderTab()}
@@ -429,7 +440,7 @@ function settingsHTML(){return `<div class="card"><h4>Live working rules</h4><di
 function displayHTML(){const t=[['auto','Live clock'],[7,'Morning'],[13,'Noon'],[18.7,'Sunset'],[23,'Night']];
  return `<div class="card"><h4>Time of day</h4><div class="mut">Lock the light for a screenshot or presentation. The plant keeps running on its own clock.</div><div class="chips">${t.map(([v,n])=>`<button class="chipb${(DN.lock==null&&v==='auto')||DN.lock===v?' on':''}" data-u="tod" data-k="${v}">${n}</button>`).join('')}</div></div>
  <div class="card"><h4>Display</h4><div class="row"><button class="btn ghost sm" onclick="document.getElementById('lbl').click()">Machine labels: ${showLabels?'on':'off'}</button><button class="btn ghost sm" onclick="document.getElementById('fx').click()">High quality: ${useFX?'on':'off'}</button></div></div>`}
-window.onFrame=function(rdt,gdt){if(!G)return;G.tod=(G.tod||0)+gdt;const h=hourNow();
+window.onFrame=function(rdt,gdt){if(!G)return;G.tod=(G.tod||0)+gdt;if(UIS.inGame){const dn=Math.floor((G.tod+DN.len*.25)/DN.len);if(G.dayIdx==null)G.dayIdx=dn;else if(dn>G.dayIdx){G.dayIdx=dn;finDay()}}const h=hourNow();
  window.shiftRate=isNight(((G.tod||0)/DN.len*24+6)%24)?(G.nightShift?.9:.35):1;applyLight(UIS.inGame?h:15);
  if(UIS.inGame&&performance.now()-(DN.lastC||0)>250){DN.lastC=performance.now();refreshClock();const wasN=DN.wasN,nowN=isNight(((G.tod||0)/DN.len*24+6)%24);if(wasN!=null&&wasN!==nowN&&DN.lock==null)banner(nowN?'Night falls':'Sunrise',nowN?(G.nightShift?'night shift takes over':'skeleton crew · 35% output'):'day shift starts');DN.wasN=nowN}};
 $('cNight').onclick=()=>setNight(!G.nightShift);$('cSkip').onclick=skipNight;
@@ -496,6 +507,278 @@ function coachInit(){const b=document.createElement('button');b.id='tutBtn';b.cl
  c.onclick=e=>{const k=e.target.dataset&&e.target.dataset.c;if(k==='later'){CO.snooze[CO.cur]=performance.now()+45000;hideCoach()}if(k==='off')setTutorial(false)};
  setInterval(coachTick,350);addEventListener('resize',coachTick)}
 
+
+// ---------------------------------------------------------------------
+// ORGANISATION CHART — plant hierarchy with country-typical names and
+// estimated salaries. Settings: country, currency, pay scale. Every person
+// can be renamed, retitled or given a different salary; kept in the save.
+// Salary figures are rough market estimates for a textile processing plant.
+// ---------------------------------------------------------------------
+const COUNTRIES={
+ IN:{n:'India',cur:'INR',fx:84,op:180,f:1,m:['Rajesh','Amit','Suresh','Vikram','Arjun','Manoj','Ravi','Sanjay','Kiran','Deepak','Anil','Harish'],w:['Priya','Anjali','Neha','Kavita','Pooja','Sunita','Meera','Ritu','Asha','Divya'],l:['Patel','Shah','Sharma','Mehta','Desai','Iyer','Reddy','Joshi','Nair','Gupta','Verma','Kulkarni']},
+ BD:{n:'Bangladesh',cur:'BDT',fx:120,op:125,f:1,m:['Rahim','Karim','Hasan','Rafiq','Tanvir','Imran','Sohel','Arif','Nazmul','Faruk'],w:['Nasrin','Shirin','Fatema','Rumana','Taslima','Sabina','Nusrat','Farzana'],l:['Hossain','Rahman','Islam','Ahmed','Chowdhury','Khan','Uddin','Sarker','Akter','Mia']},
+ ET:{n:'Ethiopia',cur:'ETB',fx:125,op:70,f:1,m:['Abebe','Kebede','Tesfaye','Dawit','Yonas','Kibrom','Bekele','Getachew','Solomon','Henok'],w:['Almaz','Tigist','Selam','Hirut','Meron','Bethlehem','Mekdes','Liya'],l:['Gebreselassie','Tadesse','Haile','Alemu','Mengistu','Desta','Wolde','Bekele','Girma','Assefa']},
+ PK:{n:'Pakistan',cur:'PKR',fx:280,op:135,f:1,m:['Ahmed','Bilal','Usman','Hamza','Faisal','Zeeshan','Kamran','Asif','Tariq','Imran'],w:['Ayesha','Sana','Hina','Mehwish','Fatima','Saba','Nida','Rabia'],l:['Khan','Malik','Qureshi','Butt','Sheikh','Chaudhry','Raza','Siddiqui','Mirza','Javed']},
+ VN:{n:'Vietnam',cur:'VND',fx:25400,op:320,f:1,m:['Minh','Tuan','Hung','Duc','Quang','Thanh','Long','Hai','Nam','Phuc'],w:['Lan','Huong','Mai','Linh','Thu','Ngoc','Trang','Hoa'],l:['Nguyen','Tran','Le','Pham','Hoang','Vu','Dang','Bui','Do','Ngo']},
+ ID:{n:'Indonesia',cur:'IDR',fx:16200,op:230,f:1,m:['Budi','Agus','Joko','Hendra','Rudi','Dedi','Eko','Bambang','Wahyu','Andi'],w:['Siti','Dewi','Sri','Ratna','Wulan','Indah','Putri','Lestari'],l:['Santoso','Wijaya','Susanto','Pratama','Hidayat','Saputra','Nugroho','Setiawan','Kurniawan','Halim']},
+ CN:{n:'China',cur:'CNY',fx:7.2,op:700,f:.85,m:['Wei','Jun','Lei','Hao','Ming','Qiang','Yong','Jian','Tao','Bo'],w:['Fang','Li','Mei','Xiu','Yan','Jing','Hui','Ling'],l:['Wang','Li','Zhang','Liu','Chen','Yang','Huang','Zhao','Wu','Zhou']},
+ TR:{n:'Türkiye',cur:'TRY',fx:41,op:650,f:.85,m:['Mehmet','Mustafa','Ahmet','Ali','Hüseyin','Emre','Murat','Burak','Kemal','Serkan'],w:['Ayşe','Fatma','Elif','Zeynep','Emine','Merve','Esra','Selin'],l:['Yılmaz','Kaya','Demir','Şahin','Çelik','Yıldız','Aydın','Öztürk','Arslan','Doğan']},
+ EG:{n:'Egypt',cur:'EGP',fx:49,op:160,f:1,m:['Mohamed','Ahmed','Mahmoud','Mostafa','Omar','Karim','Tarek','Hassan','Youssef','Amr'],w:['Mona','Nour','Heba','Dina','Rania','Salma','Yasmin','Mariam'],l:['Hassan','Ibrahim','Mahmoud','Abdelrahman','Saleh','Fawzy','Mansour','Nasser','Gamal','Hamdy']},
+ MX:{n:'Mexico',cur:'MXN',fx:18,op:480,f:.9,m:['José','Juan','Luis','Carlos','Miguel','Jorge','Alejandro','Fernando','Ricardo','Javier'],w:['María','Guadalupe','Lucía','Sofía','Ana','Verónica','Gabriela','Rosa'],l:['Hernández','García','Martínez','López','González','Pérez','Rodríguez','Sánchez','Ramírez','Torres']},
+ BR:{n:'Brazil',cur:'BRL',fx:5.6,op:420,f:.9,m:['João','Pedro','Lucas','Gabriel','Rafael','Felipe','Bruno','Thiago','Rodrigo','Marcelo'],w:['Ana','Juliana','Fernanda','Camila','Mariana','Patrícia','Aline','Beatriz'],l:['Silva','Santos','Oliveira','Souza','Lima','Pereira','Costa','Ferreira','Almeida','Carvalho']},
+ IT:{n:'Italy',cur:'EUR',fx:.93,op:2200,f:.5,m:['Marco','Luca','Giuseppe','Alessandro','Andrea','Matteo','Francesco','Stefano','Paolo','Davide'],w:['Giulia','Francesca','Chiara','Sara','Elena','Valentina','Martina','Laura'],l:['Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Colombo','Ricci','Marino','Greco']},
+ DE:{n:'Germany',cur:'EUR',fx:.93,op:3000,f:.45,m:['Thomas','Michael','Andreas','Stefan','Markus','Jan','Tobias','Florian','Matthias','Klaus'],w:['Anna','Julia','Katrin','Sabine','Claudia','Lena','Laura','Nicole'],l:['Müller','Schmidt','Schneider','Fischer','Weber','Meyer','Wagner','Becker','Schulz','Hoffmann']},
+ UK:{n:'United Kingdom',cur:'GBP',fx:.78,op:2500,f:.5,m:['James','Oliver','Harry','George','Jack','William','Thomas','Daniel','Samuel','Matthew'],w:['Emma','Olivia','Sophie','Charlotte','Emily','Hannah','Grace','Lucy'],l:['Smith','Jones','Taylor','Brown','Williams','Wilson','Johnson','Davies','Evans','Walker']},
+ US:{n:'United States',cur:'USD',fx:1,op:3300,f:.5,m:['Michael','David','John','Robert','Chris','Daniel','Kevin','Brian','Jason','Ryan'],w:['Jennifer','Jessica','Sarah','Ashley','Emily','Megan','Lauren','Amanda'],l:['Smith','Johnson','Williams','Brown','Jones','Miller','Davis','Garcia','Wilson','Moore']}};
+const ORGC={exec:'#7b5cff',prod:'#14b8a6',prep:'#f59e0b',dye:'#3b82f6',print:'#ec4899',fin:'#10b981',maint:'#64748b',sup:'#f97316'};
+// role: [id,title,multiple of operator pay,colour group,parent]
+function orgRoles(){const has=t=>machines.some(m=>m.type===t),any=ts=>ts.some(has);const R=[
+ ['gm','Plant Director',18,'exec',null],
+ ['pm','Production Manager',9,'prod','gm'],
+ ['mm','Maintenance Manager',7,'maint','gm'],
+ ['sm','Sales & Merchandising Manager',8,'sup','gm'],
+ ['hr','HR & Admin Manager',6,'sup','gm'],
+ ['fm','Finance & Accounts Manager',7,'sup','gm']];
+ if(any(['desize','bleach']))R.push(['prepH','Preparatory In-charge',4,'prep','pm']);
+ if(any(['jet','jigger','station','chem'])){R.push(['dyeM','Dyeing Manager',6,'dye','pm'],['dyeMaster','Dyeing Master',3.5,'dye','dyeM'],['lab','Lab & Colour-matching Chemist',3.2,'dye','dyeM'])}
+ if(any(['baby','rotary','flatbed','digital','kitchen','autokit','coater','laser'])){R.push(['prM','Printing Manager',6,'print','pm']);if(any(['kitchen','autokit']))R.push(['ck','Colour Kitchen In-charge',3,'print','prM']);if(any(['coater','laser']))R.push(['eng','Screen Engraving In-charge',3,'print','prM']);R.push(['prMaster','Printing Master',3.5,'print','prM'])}
+ if(any(['stenter','qc'])){R.push(['finH','Finishing In-charge',4,'fin','pm']);if(has('qc'))R.push(['qcH','Quality & Inspection Head',3.5,'fin','finH'])}
+ R.push(['mech','Mechanical Engineer',3.2,'maint','mm'],['elec','Electrical Engineer',3.2,'maint','mm']);if(any(['boiler','etp']))R.push(['util','Utilities In-charge (boiler, ETP)',2.8,'maint','mm']);
+ R.push(['exp','Export Merchandiser',3,'sup','sm']);return R}
+// operators by department, from the real plant
+function orgCrews(){const D={prepH:['desize','bleach'],dyeMaster:['jet','jigger'],lab:['station','chem'],ck:['kitchen','autokit'],eng:['coater','laser'],prMaster:['baby','rotary','flatbed','digital'],finH:['stenter'],qcH:['qc']};const out={};
+ for(const k in D){const n=machines.filter(m=>D[k].includes(m.type)).length;if(n)out[k]=n}return out}
+function seedRng(seed){let x=seed>>>0||1;return()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return(x>>>0)/4294967296}}
+function orgState(){const o=G.org=G.org||{};if(G.econ)o.country=G.econ.country;if(!o.country)o.country=(G.cfg&&G.cfg.country)||'IN';if(o.scale==null)o.scale=100;if(!o.cur)o.cur='local';if(!o.seed)o.seed=(Math.random()*1e9)|0;o.edits=o.edits||{};return o}
+function orgBuild(){const o=orgState(),C=COUNTRIES[o.country],r=seedRng(o.seed+o.country.charCodeAt(0)*31),used=new Set();
+ const name=()=>{for(let i=0;i<30;i++){const fem=r()<.32,f=(fem?C.w:C.m)[r()*(fem?C.w:C.m).length|0],l=C.l[r()*C.l.length|0],n=f+' '+l;if(!used.has(n)){used.add(n);return n}}return 'New hire'};
+ const people=orgRoles().map(([id,t,mult,grp,par])=>{const eff=1+(mult-1)*C.f;const base=C.op*eff*o.scale/100,e=o.edits[id]||{};return{id,title:e.title||t,name:e.name||name(),usd:e.usd!=null?e.usd:Math.round(base*(0.92+r()*.16)),grp,par,edited:!!(e.name||e.title||e.usd!=null)}});
+ const crews=orgCrews();for(const k in crews){const p=people.find(x=>x.id===k);if(p)p.crew=crews[k]}return people}
+function orgMoney(usd){const o=orgState(),C=COUNTRIES[o.country];if(o.cur==='usd')return '$'+Math.round(usd).toLocaleString('en-US');const v=usd*C.fx;
+ const s=v>=1e7?(v/1e6).toFixed(1)+'M':v>=1e5&&C.fx>1000?(v/1e6).toFixed(2)+'M':Math.round(v).toLocaleString('en-US');return C.cur+' '+s}
+function orgTotals(people){const o=orgState(),C=COUNTRIES[o.country];const staff=people.reduce((a,p)=>a+p.usd,0);const ops=G.workers*C.op*o.scale/100;return{staff,ops,all:staff+ops}}
+function openOrg(){const o=orgState(),people=orgBuild(),tot=orgTotals(people),C=COUNTRIES[o.country];
+ const kids=id=>people.filter(p=>p.par===id);
+ const card=p=>{const ini=p.name.split(' ').map(x=>x[0]).slice(0,2).join('');return `<div class="oc${p.edited?' ed':''}" data-o="${p.id}" style="--c:${ORGC[p.grp]}"><i class="av">${esc(ini)}</i><b>${esc(p.name)}</b><span>${esc(p.title)}</span><em>${orgMoney(p.usd)}<small>/mo</small></em>${p.crew?`<u>👷 ${p.crew} machine${p.crew>1?'s':''} · ${p.crew} operator${p.crew>1?'s':''}</u>`:''}</div>`};
+ const tree=p=>{const k=kids(p.id);return `<li>${card(p)}${k.length?'<ul>'+k.map(tree).join('')+'</ul>':''}</li>`};
+ const md=modal(`<header>${ico('i-staff')}<h2>Organisation chart</h2><div class="steps" style="gap:6px"><span class="goal" style="margin:0">${esc(G.plantName||'Plant')} · ${C.n}</span></div><button class="x" data-g="x">✕</button></header>
+  <div class="mb"><div class="orgset">
+   <label>Country <select id="oCountry">${Object.entries(COUNTRIES).map(([k,c])=>`<option value="${k}" ${k===o.country?'selected':''}>${c.n}</option>`).join('')}</select></label>
+   <label>Show salaries in <select id="oCur"><option value="local" ${o.cur==='local'?'selected':''}>${C.cur} (local)</option><option value="usd" ${o.cur==='usd'?'selected':''}>US dollars</option></select></label>
+   <label>Pay level <input type="range" id="oScale" min="60" max="160" step="5" value="${o.scale}"><b>${o.scale}%</b></label>
+   <button class="btn ghost sm" data-g="names">🎲 New names</button><button class="btn ghost sm" data-g="reset">↺ Reset my edits</button><button class="btn ghost sm" data-g="csv">⬇ Export CSV</button></div>
+   <div class="kpis"><div class="kpi"><span>Staff & managers</span><b>${people.length}</b></div><div class="kpi"><span>Operators</span><b>${G.workers}</b></div><div class="kpi"><span>Staff payroll / month</span><b>${orgMoney(tot.staff)}</b></div><div class="kpi"><span>Operator payroll / month</span><b>${orgMoney(tot.ops)}</b></div><div class="kpi"><span>Total / year</span><b>${orgMoney(tot.all*12)}</b></div></div>
+   <div class="orgwrap"><ul class="org">${tree(people.find(p=>p.id==='gm'))}</ul></div>
+   <div class="mut" style="margin-top:8px">Click anyone to change their name, title or salary. Names are typical for ${C.n}; salaries are rough monthly estimates for a textile processing plant there (operator ≈ ${orgMoney(C.op*o.scale/100)}), not quotes. The departments follow the machines in your plant.</div></div>`,'wiz');
+ {const ow=md.querySelector('.orgwrap');requestAnimationFrame(()=>{ow.scrollLeft=(ow.scrollWidth-ow.clientWidth)/2})}
+ md.querySelector('#oCountry').onchange=e=>{setCountry(e.target.value);openOrg()};md.querySelector('#oCur').onchange=e=>{o.cur=e.target.value;econ().cur=e.target.value==='usd'?'usd':'local';refreshStats();openOrg()};
+ const sc=md.querySelector('#oScale');sc.oninput=()=>sc.nextElementSibling.textContent=sc.value+'%';sc.onchange=()=>{o.scale=+sc.value;openOrg()};
+ md.onclick=e=>{const g=e.target.closest('[data-g]');if(g){const k=g.dataset.g;if(k==='x')closeModal();if(k==='names'){o.seed=(Math.random()*1e9)|0;openOrg()}if(k==='reset'){o.edits={};openOrg()}
+   if(k==='csv'){const rows=[['Name','Title','Reports to','Monthly salary (USD)','Monthly salary ('+C.cur+')','Operators']].concat(people.map(p=>[p.name,p.title,(people.find(q=>q.id===p.par)||{}).name||'',p.usd,Math.round(p.usd*C.fx),p.crew||'']));
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n')],{type:'text/csv'}));a.download='organisation-chart.csv';a.click()}return}
+  const c=e.target.closest('[data-o]');if(c)editPerson(people.find(p=>p.id===c.dataset.o))}}
+function editPerson(p){const o=orgState(),C=COUNTRIES[o.country],loc=o.cur!=='usd';
+ const md=modal(`<header>${ico('i-staff')}<h2>Edit ${esc(p.title)}</h2><button class="x" data-g="back">✕</button></header><div class="mb"><div class="form" style="grid-template-columns:1fr">
+  <div class="fld"><label>Name</label><input type="text" id="pN" value="${esc(p.name)}"></div><div class="fld"><label>Title</label><input type="text" id="pT" value="${esc(p.title)}"></div>
+  <div class="fld"><label>Monthly salary (${loc?C.cur:'USD'})</label><input type="text" id="pS" value="${Math.round(loc?p.usd*C.fx:p.usd)}"></div></div></div>
+  <footer><button class="btn ghost" data-g="back">← Back</button><span style="flex:1"></span><button class="btn ghost" data-g="undo">Use generated values</button><button class="btn green" data-g="ok">Save</button></footer>`);
+ md.onclick=e=>{const g=e.target.closest('[data-g]');if(!g)return;const k=g.dataset.g;
+  if(k==='ok'){const v=parseFloat(String($('pS').value).replace(/[^\d.]/g,''));o.edits[p.id]={name:$('pN').value.trim()||p.name,title:$('pT').value.trim()||p.title,usd:isFinite(v)?Math.round(loc?v/C.fx:v):p.usd};toast('👤 '+o.edits[p.id].name+' updated')}
+  if(k==='undo')delete o.edits[p.id];openOrg()}}
+
+
+// ---------------------------------------------------------------------
+// MACHINE STATUS ICONS + ALWAYS-ON ALERTS PANEL
+// 🔧 broken · 💤 idle (waiting for input) · 👷 no operator · 📦 goods ready to deliver
+// ---------------------------------------------------------------------
+const ST={els:{},open:true};
+function mState(m){if(m.broken)return['brk','🔧','Breakdown','Needs repair'];if(m.def.util)return null;
+ if(!m.worker)return['ops','👷','No operator','Hire an operator'];
+ if(m.def.stenter||m.type==='qc'){const o=G.orders.find(o=>G.inv[o.type]>=o.qty);if(o)return['rdy','📦','Goods ready','Order #'+o.id+' can be delivered']}
+ if(!m.running){const k=typeof needOf==='function'?needOf(m):null;return['idle','💤','Idle',k?'Waiting for '+MAT[k].toLowerCase():(m.status||'Waiting')]}return null}
+function statusTick(){const lay=$('mstat');if(!UIS.inGame){lay.innerHTML='';ST.els={};$('alerts').classList.add('hidden');return}
+ const seen={},list=[];for(const m of machines){const s=mState(m);if(!s)continue;seen[m.id]=1;list.push([m,s]);let el=ST.els[m.id];
+  if(!el){el=document.createElement('div');el.onclick=()=>{select(m);goal.t.set(m.x,1.5,m.z)};lay.appendChild(el);ST.els[m.id]=el}
+  if(el._k!==s[0]){el._k=s[0];el.className='mi '+s[0];el.innerHTML=s[1];el.title=m.name+' — '+s[2]+': '+s[3]}
+  const p=project(new THREE.Vector3(m.x,(m.def.h||4)+3.2,m.z));if(!p||p.x<-40||p.y<-40||p.x>innerWidth+40||p.y>innerHeight){el.style.display='none'}else{el.style.display='';el.style.transform=`translate(${p.x-17}px,${p.y-17}px)`}}
+ for(const id in ST.els)if(!seen[id]){ST.els[id].remove();delete ST.els[id]}
+ // side panel
+ const al=$('alerts');al.classList.remove('hidden');const cnt={brk:0,idle:0,ops:0,rdy:0};list.forEach(([m,s])=>cnt[s[0]]++);
+ const order={brk:0,rdy:1,ops:2,idle:3};list.sort((a,b)=>order[a[1][0]]-order[b[1][0]]);
+ const run=machines.filter(m=>m.running).length,tot=machines.filter(m=>!m.def.util).length;
+ const html=`<header data-a="tog"><b>Plant status</b><span class="pill run">▶ ${run}/${tot}</span>${cnt.brk?`<span class="pill brk">🔧 ${cnt.brk}</span>`:''}${cnt.rdy?`<span class="pill rdy">📦 ${cnt.rdy}</span>`:''}${cnt.ops?`<span class="pill ops">👷 ${cnt.ops}</span>`:''}${cnt.idle?`<span class="pill idle">💤 ${cnt.idle}</span>`:''}<i>${ST.open?'▾':'▸'}</i></header>`+
+  (ST.open?`<div class="al">${list.length?list.slice(0,12).map(([m,s])=>`<div class="ai ${s[0]}" data-m="${m.id}"><span>${s[1]}</span><div><b>${esc(m.name)}</b><small>${s[2]} · ${esc(s[3])}</small></div></div>`).join('')+(list.length>12?`<div class="mut" style="padding:4px 8px">+${list.length-12} more</div>`:''):'<div class="ai ok"><span>✅</span><div><b>All machines running</b><small>Nothing needs you right now</small></div></div>'}</div>`:'');
+ if(al._h!==html){al._h=html;al.innerHTML=html}}
+function statusInit(){const l=document.createElement('div');l.id='mstat';document.body.appendChild(l);const a=document.createElement('div');a.id='alerts';a.className='hidden';document.body.appendChild(a);
+ a.onclick=e=>{if(e.target.closest('[data-a=tog]')){ST.open=!ST.open;a._h='';statusTick();return}const it=e.target.closest('[data-m]');if(it){const m=machines.find(q=>q.id===+it.dataset.m);if(m){select(m);goal.t.set(m.x,1.5,m.z);goal.r=Math.max(30,Math.min(goal.r,70))}}};
+ (function f(){statusTick();setTimeout(()=>requestAnimationFrame(f),80)})()}
+
+// ---------------------------------------------------------------------
+// REVENUE GRAPH — click Revenue in the status bar
+// ---------------------------------------------------------------------
+function recordMonth(cost){const st=G.stats=G.stats||{};(st.hist=st.hist||[]).push({m:G.month,rev:st.monthRev||0,cost:Math.round(cost),cash:Math.round(G.money)});if(st.hist.length>120)st.hist.shift()}
+function openRevenue(){const st=G.stats||{},H=(st.hist||[]).slice();H.push({m:G.month,rev:st.monthRev||0,cost:0,cash:Math.round(G.money),live:true});
+ const W=760,Hh=300,P={l:64,r:16,t:16,b:34},n=H.length,xs=i=>P.l+(n<2?0:i*(W-P.l-P.r)/(n-1)),bw=Math.max(4,Math.min(26,(W-P.l-P.r)/Math.max(1,n)*.38));
+ const vals=H.flatMap(h=>[h.rev,h.cost,h.cash,h.rev-h.cost]);let mx=Math.max(1000,...vals),mn=Math.min(0,...vals);const pad=(mx-mn)*.08;mx+=pad;mn-=mn<0?pad:0;
+ const ys=v=>P.t+(mx-v)/(mx-mn)*(Hh-P.t-P.b);const path=k=>H.map((h,i)=>(i?'L':'M')+xs(i).toFixed(1)+' '+ys(h[k]).toFixed(1)).join(' ');
+ const ticks=[0,1,2,3,4].map(i=>mn+(mx-mn)*i/4);const done=H.filter(h=>!h.live),totRev=done.reduce((a,h)=>a+h.rev,0),totCost=done.reduce((a,h)=>a+h.cost,0);
+ const last=done[done.length-1],prev=done[done.length-2],trend=last&&prev?(last.rev-last.cost)-(prev.rev-prev.cost):0;
+ const svg=`<svg viewBox="0 0 ${W} ${Hh}" class="revg">${ticks.map(v=>`<line x1="${P.l}" x2="${W-P.r}" y1="${ys(v)}" y2="${ys(v)}" stroke="#eadcc2" stroke-dasharray="${v===0?'':'3 4'}" stroke-width="${Math.abs(v)<1?2:1}"/><text x="${P.l-8}" y="${ys(v)+4}" text-anchor="end">${short(v)}</text>`).join('')}
+  ${H.map((h,i)=>{const pr=h.rev-h.cost;return h.live?'':`<rect x="${xs(i)-bw/2}" y="${Math.min(ys(pr),ys(0))}" width="${bw}" height="${Math.abs(ys(pr)-ys(0))}" rx="3" fill="${pr>=0?'#2ec27e':'#ef476f'}" opacity=".35"><title>${monthName(h.m)} profit ${money(pr)}</title></rect>`}).join('')}
+  <path d="${path('cost')}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 4"/><path d="${path('rev')}" fill="none" stroke="#14b8a6" stroke-width="3.5" stroke-linejoin="round" class="draw"/><path d="${path('cash')}" fill="none" stroke="#7b5cff" stroke-width="2.5"/>
+  ${H.map((h,i)=>`<circle cx="${xs(i)}" cy="${ys(h.rev)}" r="${h.live?6:4}" fill="${h.live?'#fff':'#14b8a6'}" stroke="#14b8a6" stroke-width="2.5"><title>${monthName(h.m)}${h.live?' (so far)':''}: revenue ${money(h.rev)}${h.live?'':', costs '+money(h.cost)}, cash ${money(h.cash)}</title></circle>`).join('')}
+  ${H.map((h,i)=>n<=14||i%Math.ceil(n/12)===0||h.live?`<text x="${xs(i)}" y="${Hh-12}" text-anchor="middle">${h.live?'now':monthName(h.m).replace(' Y',"·")}</text>`:'').join('')}</svg>`;
+ const md=modal(`<header>${ico('i-trend')}<h2>Revenue & growth</h2><button class="x" data-r="x">✕</button></header><div class="mb">
+  <div class="kpis"><div class="kpi"><span>Revenue to date</span><b class="up">${short(totRev+(st.monthRev||0))}</b></div><div class="kpi"><span>Costs to date</span><b>${short(totCost)}</b></div><div class="kpi"><span>Profit to date</span><b class="${totRev-totCost>=0?'up':'down'}">${short(totRev-totCost)}</b></div><div class="kpi"><span>This month so far</span><b>${short(st.monthRev||0)}</b></div><div class="kpi"><span>Trend vs last month</span><b class="${trend>=0?'up':'down'}">${done.length>1?(trend>=0?'▲ ':'▼ ')+short(Math.abs(trend)):'—'}</b></div></div>
+  <div class="card" style="padding:10px">${n<2?'<div class="mut" style="padding:30px;text-align:center">The graph fills in month by month. Come back after the first month ends.</div>':svg}
+  <div class="row" style="gap:14px;font-size:12px;color:#6b5a44"><span><i class="lg" style="background:#14b8a6"></i>Revenue</span><span><i class="lg" style="background:#f59e0b"></i>Running costs</span><span><i class="lg" style="background:#7b5cff"></i>Cash</span><span><i class="lg" style="background:#2ec27e;opacity:.5"></i>Profit</span><span><i class="lg" style="background:#ef476f;opacity:.5"></i>Loss</span></div></div><div class="row"><button class="btn ghost sm" data-st="1">📑 Financial statements</button></div>${consultHTML()}</div>`,'wiz');
+ md.onclick=e=>{if(e.target.closest('[data-r=x]'))closeModal();if(e.target.closest('[data-st]'))openStatements();const c=e.target.closest('[data-c]');if(c&&!c.disabled)runConsult(c.dataset.c,md);const ap=e.target.closest('[data-ap]');if(ap&&!ap.disabled)applyRec(+ap.dataset.ap)}}
+
+
+// ---------------------------------------------------------------------
+// CONSULTANCY — pay a consultant to study the plant and recommend the
+// actions that add the most profit; each recommendation can be applied.
+// ---------------------------------------------------------------------
+function upkeepOf(m){return m.def.up*(G.research.lean?.85:1)}
+function consultRecs(){const R=[],wage=G.wage||600,prod=machines.filter(m=>!m.def.util);
+ const brk=machines.filter(m=>m.broken);if(brk.length)R.push({v:brk.reduce((a,m)=>a+m.def.cost*.08,0),t:'Repair broken machines now',w:brk.map(m=>m.name).join(', ')+' '+(brk.length>1?'are':'is')+' stopped and holding up the line.',a:'Repair all · '+money(brk.reduce((a,m)=>a+repCost(m),0)),f:()=>{for(const m of brk){const c=repCost(m);if(G.money>=c){G.money-=c;m.broken=false}}}});
+ const need=prod.length;if(G.workers<need)R.push({v:(need-G.workers)*1800,t:'Hire '+(need-G.workers)+' operator'+(need-G.workers>1?'s':''),w:'Machines without operators earn nothing but still cost upkeep.',a:'Hire · '+money((need-G.workers)*1500),f:()=>{for(let i=G.workers;i<need&&G.money>=1500;i++){G.money-=1500;book('hiring',-1500);G.workers++}}});
+ if(G.workers>need+1)R.push({v:(G.workers-need)*wage,t:'Release '+(G.workers-need)+' surplus operator'+(G.workers-need>1?'s':''),w:'You pay '+money(wage)+' a month each for people with no machine to run.',a:'Release',f:()=>{G.workers=need}});
+ if(G.inv.greige<6&&G.orders.length)R.push({v:3500,t:'Keep a greige buffer',w:'Greige is down to '+Math.floor(G.inv.greige)+' lots; the whole plant stops when it runs out.',a:'Buy 30 lots · '+money(G.greige*30),f:()=>{const c=G.greige*30;if(G.money>=c){G.money-=c;G.inv.greige+=30}}});
+ const idle=prod.filter(m=>!m.running&&m.worker&&!m.broken&&m.produced<3&&machines.filter(q=>q.type===m.type).length>1);if(idle.length){const m=idle[0];R.push({v:upkeepOf(m)+wage,t:'Sell the idle '+m.name,w:'A second '+m.def.name.toLowerCase()+' has barely run. It costs '+money(upkeepOf(m))+'/mo upkeep plus an operator.',a:'Sell for '+money(Math.round(m.def.cost*.4*m.level)),f:()=>{if(typeof sellMachine==='function')sellMachine(m)}})}
+ const fin=Math.floor(G.inv.fd)+Math.floor(G.inv.fp);if(fin>=12&&!G.orders.some(o=>G.inv[o.type]>=1))R.push({v:fin*500,t:'Turn idle stock into cash',w:fin+' lots of finished fabric are sitting in the warehouse with no order to fill.',a:'Sell half on the spot market',f:()=>{const d=Math.floor(G.inv.fd/2),p=Math.floor(G.inv.fp/2);G.inv.fd-=d;G.inv.fp-=p;G.money+=d*550+p*800}});
+ const pr=machines.filter(m=>m.def.out&&m.def.out.printed).length,dy=machines.filter(m=>m.def.out&&m.def.out.dyed).length;if(pr<=dy&&unlocked('baby'))R.push({v:4000,t:'Grow printing capacity',w:'Printed fabric sells for about 45% more than dyed, and you have '+pr+' printer'+(pr===1?'':'s')+' to '+dy+' dyeing machine'+(dy===1?'':'s')+'.',a:'Open Build → Rotary printing',f:()=>{closeModal();UIS.cat='rotary';togglePanel('build')}});
+ const up=machines.reduce((a,m)=>a+upkeepOf(m),0);const lean=RESEARCH.find(r=>r.id==='lean');if(lean&&!G.research.lean&&up>4000)R.push({v:up*.15,t:'Research '+lean.name,w:'It cuts '+money(up*.15)+' a month off your '+money(up)+' upkeep and halves breakdowns.',a:'Research · '+money(lean.cost),f:()=>{if(G.money>=lean.cost){G.money-=lean.cost;G.research.lean=1}}});
+ if(G.loan>=10000&&G.money>G.loan+30000)R.push({v:G.loan*.01,t:'Pay off the bank loan',w:'Interest costs '+money(G.loan*.01)+' a month and you have the cash.',a:'Repay '+money(G.loan),f:()=>{G.money-=G.loan;G.loan=0}});
+ const late=G.orders.filter(o=>o.due-G.month<=1&&G.inv[o.type]<o.qty).length;if(!G.nightShift&&late)R.push({v:late*2500,t:'Run a night shift',w:late+' order'+(late>1?'s are':' is')+' due within a month and short of fabric. Night output rises from 35% to 90%.',a:'Start night shift',f:()=>setNight(true)});
+ if(G.nightShift&&!G.orders.length)R.push({v:G.workers*wage*.4,t:'Stop the night shift',w:'No orders are waiting, so the extra 40% wages buy nothing.',a:'Stop night shift',f:()=>setNight(false)});
+ const busy=prod.filter(m=>m.running&&m.level<3).sort((a,b)=>b.produced-a.produced)[0];if(busy)R.push({v:upCost(busy)*.12,t:'Upgrade the '+busy.name,w:'It is your busiest machine ('+busy.produced+' lots). A level up makes it faster.',a:'Upgrade · '+money(upCost(busy)),f:()=>{const c=upCost(busy);if(G.money>=c){G.money-=c;busy.level++}}});
+ {const r=riskS(),prodN=machines.filter(m=>!m.def.util&&m.def.out).length,avg=prodN?machines.filter(m=>!m.def.util&&m.def.out).reduce((a,m)=>a+rejectRate(m),0)/prodN:0;
+  if(r.maint<2&&avg>.035){const nx=r.maint+1,save=Math.round(r.rejV/Math.max(1,G.month)*(1-MAINT[nx][3]/MAINT[r.maint][3]))||Math.round(avg*prodN*60*400*(1-MAINT[nx][3]/MAINT[r.maint][3]));R.push({v:Math.max(0,save-MAINT[nx][2]+MAINT[r.maint][2])+800,t:'Move to '+MAINT[nx][0].toLowerCase(),w:'About '+(avg*100).toFixed(1)+'% of lots are rejected ('+short(r.rejV)+' lost so far). '+MAINT[nx][1]+' cuts rejections to ×'+MAINT[nx][3]+'.',a:'Switch · '+money(MAINT[nx][2])+'/mo',f:()=>{r.maint=nx}})}
+  if(r.sec<2&&r.theft>0){const nx=r.sec+1;R.push({v:Math.max(500,Math.round(r.theftV/Math.max(1,G.month)*(1-SEC[nx][3]/SEC[r.sec][3]))-SEC[nx][2]+SEC[r.sec][2]),t:'Improve security: '+SEC[nx][0].toLowerCase(),w:r.theft+' theft'+(r.theft>1?'s':'')+' so far cost '+short(r.theftV)+'. '+SEC[nx][1]+' cuts the risk to ×'+SEC[nx][3]+'.',a:'Switch · '+money(SEC[nx][2])+'/mo',f:()=>{r.sec=nx}})}}
+ return R.sort((a,b)=>b.v-a.v)}
+const CONSULT=[['quick','Quick advice','One top recommendation',2000],['review','Full plant review','Up to five recommendations, ranked',6000]];
+function consultHTML(){return `<div class="card"><h4>🧑‍💼 Hire a textile consultant</h4><div class="mut">An expert studies your plant, orders and costs, and tells you what would add the most profit. You can act on each recommendation with one click.</div>
+ <div class="row">${CONSULT.map(([k,t,d,c])=>`<button class="btn ${k==='quick'?'gold':'green'}" data-c="${k}" ${G.money<c?'disabled':''}><span style="display:block">${t} · ${money(c)}</span><small style="font:600 11px var(--body);opacity:.85">${d}</small></button>`).join('')}</div></div><div id="crep">${repHTML()}</div>`}
+function repHTML(){const r=UIS.rep;if(!r)return '';return `<div class="card" style="border-color:#7ee8a6"><h4>📋 ${r.title} · report for ${esc(G.plantName||'your plant')}</h4>${r.recs.length?r.recs.map((x,i)=>`<div class="rec"><b>${i+1}. ${esc(x.t)}</b><span class="gain">≈ +${short(x.v)}/mo</span><div class="mut">${esc(x.w)}</div><button class="btn sm" data-ap="${i}" ${r.done[i]?'disabled':''}>${r.done[i]?'✓ Done':esc(x.a)}</button></div>`).join(''):'<div class="mut">Your plant is in good shape. Keep delivering on time and reinvest in printing capacity.</div>'}</div>`}
+function applyRec(i){const r=UIS.rep;if(!r||r.done[i])return;const pre=G.money;r.recs[i].f();r.done[i]=1;bookDelta(G.money-pre,'consultAct');refreshStats();renderTab();const box=document.querySelector('#ov #crep');if(box)box.innerHTML=repHTML()}
+function runConsult(k,root){const c=CONSULT.find(x=>x[0]===k);if(G.money<c[3])return;G.money-=c[3];book('consult',-c[3]);UIS.rep={title:c[1],recs:consultRecs().slice(0,k==='quick'?1:5),done:{}};
+ const box=root.querySelector('#crep');if(box)box.innerHTML=repHTML();renderTab();toast('🧑‍💼 Consultant report ready — '+UIS.rep.recs.length+' recommendation'+(UIS.rep.recs.length===1?'':'s'))}
+
+
+// ---------------------------------------------------------------------
+// BOOKS — every cash movement is classified; monthly P&L, cash flow and
+// balance sheet, plus a daily log. Kept in G.fin and saved with the game.
+// ---------------------------------------------------------------------
+const CAT={orders:['Sales — orders','inc'],spot:['Sales — spot market','inc'],msale:['Machine sales','inv'],greige:['Greige (raw material)','op'],wages:['Wages','op'],night:['Night-shift premium','op'],upkeep:['Machine upkeep & utilities','op'],repairs:['Repairs','op'],hiring:['Hiring fees','op'],research:['Research','op'],consult:['Consultancy','op'],interest:['Loan interest','fin_i'],capex:['New machines','inv'],upgrade:['Machine upgrades','inv'],loanIn:['Loans taken','fin'],loanOut:['Loans repaid','fin'],maint:['Maintenance plan','op'],subsidy:['Government support','inc'],security:['Security','op'],other:['Other','op']};
+function finState(){const f=G.fin=G.fin||{};if(!f.months){f.months={};f.days=[];f.snaps={};f.cash0=G.money;f.last=G.money;f.today={in:0,out:0,lots:0,del:0}}return f}
+function book(cat,amt){if(!G||!amt)return;const f=finState(),mo=f.months[G.month]=f.months[G.month]||{};mo[cat]=(mo[cat]||0)+amt;f.last+=amt;if(amt>0)f.today.in+=amt;else f.today.out-=amt}
+function bookDelta(d,hint){if(!d)return;book(hint==='consultAct'?(d>0?'msale':'other'):hint,d)}
+const ACT={buy:'greige',spot:'spot',borrow:'loanIn',repay:'loanOut',hire:'hiring',res:'research'};
+function finInit(){
+ // engine buttons in panels
+ $('tc').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||!G)return;const c=ACT[b.dataset.a];if(!c)return;const pre=G.money;setTimeout(()=>book(c,G.money-pre),0)},true);
+ // machine editor: repair, upgrade, clone, sell
+ const map={peRp:'repairs',peUp:'upgrade',peCl:'capex',peSl:'msale'};
+ document.addEventListener('click',e=>{const b=e.target.closest('#pe button');if(!b||!G||!map[b.id])return;const pre=G.money;setTimeout(()=>{const d=G.money-pre;book(map[b.id],d);if(b.id==='peCl')econCapex(d)},0)},true);
+ addEventListener('keydown',e=>{if(e.key==='Delete'&&G&&sel){const pre=G.money;setTimeout(()=>book('msale',G.money-pre),0)}},true);
+ // placing a machine on the floor
+ R.domElement.addEventListener('pointerup',()=>{if(!G||!tool)return;const pre=G.money;setTimeout(()=>{const d=G.money-pre;book('capex',d);econCapex(d)},0)},true);
+ // anything else that moved cash
+ setInterval(()=>{if(!G||!UIS.inGame)return;const f=finState(),d=Math.round(G.money-f.last);if(Math.abs(d)>=1)book('other',d)},1000)}
+function finMonth(cost){const f=finState();let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;const wages=G.workers*(G.wage||600),int=Math.round(G.loan*.01),night=G.nightShift?G.workers*(G.wage||600)*.4:0;
+ // engine already took the money: re-book it in its parts
+ const mo=f.months[G.month-1]=f.months[G.month-1]||{};const parts={upkeep:-Math.round(up),wages:-wages,interest:-int,night:-night};for(const k in parts){mo[k]=(mo[k]||0)+parts[k];f.last+=parts[k]}
+ f.snaps[G.month-1]=bsNow()}
+function invValue(){const i=G.inv;return Math.round(i.greige*G.greige+(i.scoured+i.rfd)*G.greige*1.25+(i.dyed+i.printed)*G.greige*1.6+i.fd*385+i.fp*560)}
+function fixedValue(){return Math.round(machines.reduce((a,m)=>a+m.def.cost*(1+.5*(m.level-1))*Math.max(.3,1-(m.age||0)*.01),0))}
+function bsNow(){const cash=Math.round(G.money),inv=invValue(),fa=fixedValue(),loan=Math.round(G.loan),od=cash<0?-cash:0;const assets=Math.max(0,cash)+inv+fa,liab=loan+od;return{cash:Math.max(0,cash),inv,fa,assets,loan,od,liab,equity:assets-liab}}
+function plOf(mo,mi){const LS=(G.fin&&G.fin.loss&&G.fin.loss[mi])||{};mo=mo||{};const g=k=>mo[k]||0;const sub=g('subsidy'),rev=g('orders')+g('spot'),rejL=Math.round(LS.rej||0),thL=Math.round(LS.theft||0),mat=-g('greige'),gross=rev-mat-rejL-thL,opex=-(g('wages')+g('night')+g('upkeep')+g('repairs')+g('hiring')+g('research')+g('consult')+g('other'));
+ const dep=Math.round(fixedValue()*.01),ebit=gross-opex-dep+sub,int=-g('interest');return{rev,orders:g('orders'),spot:g('spot'),mat,gross,wages:-(g('wages')+g('night')),upkeep:-g('upkeep'),repairs:-g('repairs'),hiring:-g('hiring'),research:-g('research'),consult:-g('consult'),other:-g('other'),maint:-g('maint'),security:-g('security'),sub,rejL,thL,opex,dep,ebit,int,net:ebit-int}}
+function cfOf(mo){mo=mo||{};const g=k=>mo[k]||0;let op=0,inv=0,fin=0;for(const k in mo){const t=CAT[k]?CAT[k][1]:'op';if(t==='inv')inv+=mo[k];else if(t==='fin')fin+=mo[k];else op+=mo[k]}return{op,inv,fin,net:op+inv+fin}}
+// daily log: one plant day = DN.len game seconds
+function finDay(){const f=finState();maybeTheft();f.days.push({m:G.month,d:f.dayN=(f.dayN||0)+1,cash:Math.round(G.money),in:Math.round(f.today.in),out:Math.round(f.today.out),lots:f.today.lots,del:f.today.del});if(f.days.length>90)f.days.shift();
+ const t=f.today;if(UIS.inGame&&(t.in||t.out||t.lots))toast('📅 Day '+f.dayN+' report: +'+short(t.in)+' in · −'+short(t.out)+' out · '+t.lots+' lots made'+(t.del?' · '+t.del+' delivered':''));f.today={in:0,out:0,lots:0,del:0}}
+function openStatements(tab){tab=tab||UIS.stTab||'pl';UIS.stTab=tab;const f=finState();const ms=Object.keys(f.months).map(Number).filter(m=>m<G.month).sort((a,b)=>a-b).slice(-6);const cols=ms.concat([G.month]);
+ const head=`<tr><th></th>${cols.map(m=>`<th>${monthName(m)}${m===G.month?'<small>so far</small>':''}</th>`).join('')}</tr>`;const FX=curNow().fx,cell=v=>{v=Math.round((v||0)*FX);return `<td class="${v<0?'neg':''}">${v<0?'('+Math.abs(v).toLocaleString('en-US')+')':v===0?'–':v.toLocaleString('en-US')}</td>`};
+ const row=(lbl,fn,cls)=>`<tr class="${cls||''}"><td>${lbl}</td>${cols.map(m=>cell(fn(m))).join('')}</tr>`;let body='';
+ if(tab==='pl'){const P=m=>plOf(f.months[m],m);body=row('Sales — orders',m=>P(m).orders)+row('Sales — spot market',m=>P(m).spot)+row('Revenue',m=>P(m).rev,'tot')+row('Greige (materials)',m=>-P(m).mat)+row('Rejected lots (at cost)',m=>-P(m).rejL)+row('Theft losses (at cost)',m=>-P(m).thL)+row('Gross profit',m=>P(m).gross,'tot')+row('Wages (incl. night shift)',m=>-P(m).wages)+row('Upkeep & utilities',m=>-P(m).upkeep)+row('Repairs',m=>-P(m).repairs)+row('Maintenance plan',m=>-P(m).maint)+row('Security',m=>-P(m).security)+row('Hiring',m=>-P(m).hiring)+row('Research',m=>-P(m).research)+row('Consultancy',m=>-P(m).consult)+row('Other',m=>-P(m).other)+row('Depreciation (1%/mo)',m=>-P(m).dep)+row('Government support',m=>P(m).sub)+row('Operating profit (EBIT)',m=>P(m).ebit,'tot')+row('Loan interest',m=>-P(m).int)+row('Net profit / loss',m=>P(m).net,'grand')}
+ if(tab==='cf'){let open=f.cash0;const op={};for(const m of Object.keys(f.months).map(Number).sort((a,b)=>a-b)){op[m]=open;open+=cfOf(f.months[m]).net}const C=m=>cfOf(f.months[m]),g=(m,k)=>(f.months[m]||{})[k]||0;
+  body=row('Opening cash',m=>op[m]!=null?op[m]:G.money,'sub')+row('Cash from sales',m=>g(m,'orders')+g(m,'spot'))+row('Paid for greige',m=>g(m,'greige'))+row('Paid wages',m=>g(m,'wages')+g(m,'night'))+row('Paid upkeep, repairs, maintenance',m=>g(m,'upkeep')+g(m,'repairs')+g(m,'maint'))+row('Paid security',m=>g(m,'security'))+row('Paid hiring, research, consultancy',m=>g(m,'hiring')+g(m,'research')+g(m,'consult')+g(m,'other'))+row('Interest paid',m=>g(m,'interest'))+row('Government support received',m=>g(m,'subsidy'))+row('Operating cash flow',m=>C(m).op,'tot')+row('New machines & upgrades',m=>g(m,'capex')+g(m,'upgrade'))+row('Machine sales',m=>g(m,'msale'))+row('Investing cash flow',m=>C(m).inv,'tot')+row('Loans taken',m=>g(m,'loanIn'))+row('Loans repaid',m=>g(m,'loanOut'))+row('Financing cash flow',m=>C(m).fin,'tot')+row('Net change in cash',m=>C(m).net,'grand')+row('Closing cash',m=>(op[m]!=null?op[m]:G.money)+C(m).net,'sub')}
+ if(tab==='bs'){const B=m=>m===G.month?bsNow():(f.snaps[m]||bsNow());body=`<tr class="sec"><td colspan="${cols.length+1}">Assets</td></tr>`+row('Cash at bank',m=>B(m).cash)+row('Inventory (greige, WIP, finished)',m=>B(m).inv)+row('Machines (net of depreciation)',m=>B(m).fa)+row('Total assets',m=>B(m).assets,'tot')+`<tr class="sec"><td colspan="${cols.length+1}">Liabilities</td></tr>`+row('Bank loan',m=>B(m).loan)+row('Overdraft (negative cash)',m=>B(m).od)+row('Total liabilities',m=>B(m).liab,'tot')+row('Owner’s equity',m=>B(m).equity,'grand')}
+ let table=`<table class="fs">${head}${body}</table>`;
+ if(tab==='day'){const D=f.days.slice(-30).reverse();const mx=Math.max(1,...D.map(d=>Math.max(d.in,d.out)));const fx2=curNow().fx;table=D.length?`<table class="fs"><tr><th>Day</th><th>Month</th><th>Money in</th><th>Money out</th><th></th><th>Lots made</th><th>Delivered</th><th>Cash at close</th></tr>${D.map(d=>`<tr><td>Day ${d.d}</td><td>${monthName(d.m)}</td><td>${Math.round(d.in*fx2).toLocaleString('en-US')}</td><td class="neg">(${Math.round(d.out*fx2).toLocaleString('en-US')})</td><td style="width:120px"><i class="db in" style="width:${d.in/mx*55}px"></i><i class="db out" style="width:${d.out/mx*55}px"></i></td><td>${d.lots}</td><td>${d.del}</td><td class="${d.cash<0?'neg':''}">${Math.round(d.cash*fx2).toLocaleString('en-US')}</td></tr>`).join('')}</table>`:'<div class="mut" style="padding:24px;text-align:center">The first daily report appears at the end of the first plant day.</div>'}
+ const tabs=[['pl','Profit & loss'],['cf','Cash flow'],['bs','Balance sheet'],['day','Daily log']];
+ const md=modal(`<header>${ico('i-finance')}<h2>Financial statements</h2><button class="x" data-f="x">✕</button></header><div class="mb"><div class="sub">${tabs.map(([k,t])=>`<button data-f="${k}" class="${tab===k?'on':''}">${t}</button>`).join('')}</div>
+  <div class="fswrap">${table}</div><div class="mut" style="margin-top:8px">Amounts in ${econ().cur==='local'?COUNTRIES[econ().country].cur:'US dollars'}; brackets are outflows or losses. The current month is shown so far. Inventory is valued at cost, machines at purchase price less 1% a month.</div>
+  <div class="row"><button class="btn ghost sm" data-f="csv">⬇ Export CSV</button><button class="btn ghost sm" data-f="rev">📈 Revenue graph & consultant</button></div></div>`,'wiz');
+ md.onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;const k=b.dataset.f;if(k==='x')closeModal();else if(k==='rev')openRevenue();else if(k==='csv'){const t=md.querySelector('table');const csv=[...t.rows].map(r=>[...r.cells].map(c=>'"'+c.innerText.replace(/\n/g,' ').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='textile-tycoon-'+tab+'.csv';a.click()}else openStatements(k)}}
+
+
+// ---------------------------------------------------------------------
+// RISKS — rejected lots (quality) and theft (security)
+// ---------------------------------------------------------------------
+const MAINT=[['Breakdown only','Fix machines when they fail',0,1],['Preventive maintenance','Weekly checks, cleaning, calibration',1200,.55],['Total productive maintenance','Daily operator care + planned overhauls',3000,.3]];
+const SEC=[['No security','Open gates, no guards',0,1],['Guards at the gate','Two guards per shift, gate passes',900,.4],['Guards + CCTV + stock audits','Cameras, locked stores, weekly counts',2200,.1]];
+const riskS=()=>{G.risk=G.risk||{maint:0,sec:0,rej:0,rejV:0,theft:0,theftV:0,log:[]};return G.risk};
+function rejectRate(m){const r=riskS();let p=.07*MAINT[r.maint][3]*(1-.3*(m.level-1));if(G.research.lean)p*=.7;if(m.age>24)p*=1.3;return Math.max(.004,p)}
+function lotValue(k){return k==='fp'?560:k==='fd'?385:k==='printed'||k==='dyed'?G.greige*1.6:G.greige*1.25}
+function lossBook(kind,v){const f=finState(),L=f.loss=f.loss||{},mo=L[G.month]=L[G.month]||{};mo[kind]=(mo[kind]||0)+v}
+function maybeReject(m){if(m.def.util||!m.def.out)return false;if(Math.random()>=rejectRate(m))return false;const k=m.def.stenter?(m.lot==='printed'?'fp':'fd'):Object.keys(m.def.out)[0];if(!k||G.inv[k]<1)return false;
+ G.inv[k]-=1;const r=riskS(),v=lotValue(k);r.rej++;r.rejV+=v;m.rejects=(m.rejects||0)+1;lossBook('rej',v);r.log.unshift({t:'reject',m:m.name,v,mo:G.month});r.log.length=Math.min(r.log.length,40);
+ const p=project(new THREE.Vector3(m.x,(m.def.h||4)+2.6,m.z));if(p&&UIS.inGame)popAt(p.x,p.y,'❌ Lot rejected','pop rej');return true}
+function maybeTheft(){const r=riskS(),p=.14*SEC[r.sec][3];if(Math.random()>=p)return;const items=['greige','fd','fp'].filter(k=>G.inv[k]>=2);if(!items.length)return;const k=items[Math.random()*items.length|0],n=Math.max(1,Math.round(G.inv[k]*(.06+Math.random()*.1)));
+ G.inv[k]-=n;const v=n*lotValue(k==='greige'?'gr':k)*(k==='greige'?G.greige/(G.greige*1.25):1);r.theft++;r.theftV+=v;lossBook('theft',v);r.log.unshift({t:'theft',m:n+' lots of '+MAT[k].toLowerCase(),v,mo:G.month});r.log.length=Math.min(r.log.length,40);
+ toast('🚨 Theft overnight: '+n+' lot'+(n>1?'s':'')+' of '+MAT[k].toLowerCase()+' missing (≈'+money(v)+'). Better security cuts this.');banner('Stock stolen','≈ '+money(v)+' lost')}
+function riskMonth(){const r=riskS(),c=MAINT[r.maint][2]+SEC[r.sec][2];if(!c)return;G.money-=c;const f=finState(),mo=f.months[G.month-1]=f.months[G.month-1]||{};if(MAINT[r.maint][2]){mo.maint=(mo.maint||0)-MAINT[r.maint][2]}if(SEC[r.sec][2]){mo.security=(mo.security||0)-SEC[r.sec][2]}f.last-=c}
+function riskHTML(){const r=riskS(),prod=machines.filter(m=>!m.def.util&&m.def.out),avg=prod.length?prod.reduce((a,m)=>a+rejectRate(m),0)/prod.length:0;
+ const opt=(arr,cur,key)=>arr.map(([t,d,c,f],i)=>`<button class="mc${cur===i?' on':''}" data-rk="${key}" data-rv="${i}" style="min-height:0"><b>${t}</b><span class="rec">${d}</span><span class="cost">${c?money(c)+'/mo':'Free'} · ${key==='maint'?'rejects ×'+f:'theft risk ×'+f}</span></button>`).join('');
+ return `<div class="kpis"><div class="kpi"><span>Average reject rate</span><b class="${avg>.05?'down':''}">${(avg*100).toFixed(1)}%</b></div><div class="kpi"><span>Lots rejected</span><b>${r.rej}</b></div><div class="kpi"><span>Rejection loss</span><b class="down">${short(r.rejV)}</b></div><div class="kpi"><span>Thefts</span><b>${r.theft}</b></div><div class="kpi"><span>Theft loss</span><b class="down">${short(r.theftV)}</b></div></div>
+ <div class="card"><h4>🛠 Maintenance plan</h4><div class="mut">Worn, poorly kept machines spoil lots. Better maintenance and upgrading machines (each level −30%) cut rejections; machines over 2 years old reject more.</div><div class="grid" style="grid-template-columns:repeat(3,1fr)">${opt(MAINT,r.maint,'maint')}</div></div>
+ <div class="card"><h4>🛡 Security</h4><div class="mut">Greige and finished fabric can go missing overnight. Guards, cameras and stock audits deter it.</div><div class="grid" style="grid-template-columns:repeat(3,1fr)">${opt(SEC,r.sec,'sec')}</div></div>
+ <div class="card"><h4>Highest reject rates</h4>${prod.slice().sort((a,b)=>rejectRate(b)-rejectRate(a)).slice(0,5).map(m=>`<div class="row" style="margin:3px 0"><span style="flex:1">${esc(m.name)} <span class="mut">L${m.level}${m.rejects?' · '+m.rejects+' rejected':''}</span></span><b class="${rejectRate(m)>.05?'down':''}">${(rejectRate(m)*100).toFixed(1)}%</b></div>`).join('')||'<div class="mut">No production machines yet.</div>'}</div>
+ ${r.log.length?`<div class="card"><h4>Recent losses</h4>${r.log.slice(0,8).map(x=>`<div class="row" style="margin:3px 0"><span>${x.t==='theft'?'🚨':'❌'}</span><span style="flex:1">${x.t==='theft'?'Theft: '+esc(x.m):'Rejected at '+esc(x.m)}</span><span class="mut">${monthName(x.mo)} · ${money(x.v)}</span></div>`).join('')}</div>`:''}`}
+
+
+// ---------------------------------------------------------------------
+// COUNTRY, CURRENCY, COSTS & GOVERNMENT SUPPORT
+// Defaults reflect schemes in force in late 2026 (simplified for the game);
+// every value can be changed by the player.
+// ---------------------------------------------------------------------
+const SYM={INR:'₹',BDT:'৳',ETB:'Br ',PKR:'Rs ',VND:'₫',IDR:'Rp ',CNY:'¥',TRY:'₺',EGP:'E£',MXN:'MX$',BRL:'R$',EUR:'€',GBP:'£',USD:'$'};
+for(const k in COUNTRIES)COUNTRIES[k].sym=SYM[COUNTRIES[k].cur];
+// utilK: power & steam cost vs. game baseline; schemes: [name, note, kind, %]
+const ECON={IN:{utilK:1,s:[['RoDTEP export remission','Remission of duties & taxes on exported fabric (extended to 30 Sep 2026 — check current status)','export',1.5],['State textile policy capital subsidy','Many states pay a share of new machinery cost; PM MITRA parks add infrastructure support','capex',10],['State interest subvention','Interest support on term loans for textile units under state policies','interest',50]]},
+ BD:{utilK:.85,s:[['Alternative cash support','1.5% cash assistance on textile exports in lieu of bond/duty drawback (FY2026-27)','export',1.5],['Eurozone special incentive','Extra 0.5% on shipments to Eurozone countries','export',.5]]},
+ ET:{utilK:.5,s:[['Duty-free capital goods','100% customs-duty exemption on imported machinery and spares','capex',15],['Industrial park power tariff','Electricity at about 3 US cents/kWh in industrial parks','info',0],['Income-tax holiday','Multi-year profit-tax exemption for new investments (no profit tax in this game)','info',0]]},
+ PK:{utilK:1.35,s:[]},VN:{utilK:.8,s:[]},ID:{utilK:.9,s:[]},CN:{utilK:.9,s:[]},TR:{utilK:1.25,s:[]},EG:{utilK:.7,s:[]},MX:{utilK:1,s:[]},BR:{utilK:1.1,s:[]},IT:{utilK:1.8,s:[]},DE:{utilK:1.9,s:[]},UK:{utilK:1.7,s:[]},US:{utilK:1,s:[]}};
+function econDefaults(c){const E=ECON[c]||{utilK:1,s:[]};return{country:c,cur:'local',utilK:E.utilK,schemes:E.s.map(x=>({n:x[0],d:x[1],k:x[2],p:x[3],on:true})),custom:{capex:0,export:0,interest:0}}}
+function econ(){if(!G.econ)G.econ=econDefaults((G.org&&G.org.country)||'IN');return G.econ}
+function subPct(kind){const e=econ();let p=(e.custom&&e.custom[kind])||0;for(const x of e.schemes)if(x.on&&x.k===kind)p+=x.p;return p}
+function setCountry(c,keepCosts){const e=econ(),cur=e.cur;if(keepCosts){e.country=c}else{G.econ=econDefaults(c);G.econ.cur=cur}const o=orgState();o.country=c;toast('🌍 Plant country: '+COUNTRIES[c].n+' — costs and government support updated');refreshStats();renderTab()}
+// effects
+function econCapex(d){if(d>=0)return;const p=subPct('capex');if(!p)return;const r=Math.round(-d*p/100);G.money+=r;book('subsidy',r);toast('🏛 Capital subsidy received: '+money(r))}
+function econDeliver(o){const p=o.exp?subPct('export'):0;if(!p)return;const r=Math.round(o.reward*p/100);G.money+=r;book('subsidy',r)}
+function econMonth(){const e=econ(),f=finState(),mo=f.months[G.month-1]=f.months[G.month-1]||{};let up=0;machines.forEach(m=>up+=m.def.up);if(G.research.lean)up*=.85;
+ const du=Math.round(up*(e.utilK-1));if(du){G.money-=du;mo.upkeep=(mo.upkeep||0)-du;f.last-=du}
+ const ip=subPct('interest');const int=Math.round(G.loan*.01);if(ip&&int){const r=Math.round(int*Math.min(100,ip)/100);G.money+=r;mo.subsidy=(mo.subsidy||0)+r;f.last+=r}}
+function econHTML(){const e=econ(),C=COUNTRIES[e.country],wageTyp=C.op;
+ return `<div class="card"><h4>🌍 Country, currency & costs</h4><div class="form" style="grid-template-columns:1fr 1fr">
+  <div class="fld"><label>Country</label><select data-ec="country">${Object.entries(COUNTRIES).map(([k,c])=>`<option value="${k}" ${k===e.country?'selected':''}>${c.n}</option>`).join('')}</select></div>
+  <div class="fld"><label>Show money in</label><select data-ec="cur"><option value="local" ${e.cur==='local'?'selected':''}>${C.cur} (${C.sym.trim()})</option><option value="usd" ${e.cur!=='local'?'selected':''}>US dollars ($)</option></select></div>
+  <div class="fld"><label>Operator wage <b>${money(G.wage||600)}/mo</b></label><input type="range" data-set="wage" min="50" max="4000" step="10" value="${G.wage||600}"><button class="btn ghost sm" data-ec="wageTyp">Use typical for ${C.n}: ${money(wageTyp)}</button></div>
+  <div class="fld"><label>Utilities (power, steam, water) <b id="ukv">${Math.round(e.utilK*100)}% of base</b></label><input type="range" data-ec="utilK" min="30" max="250" step="5" value="${Math.round(e.utilK*100)}"><button class="btn ghost sm" data-ec="utilTyp">Use typical for ${C.n}: ${Math.round(((ECON[e.country]||{}).utilK||1)*100)}%</button></div></div>
+  <div class="mut">Money is kept in US dollars inside the game and shown at about ${C.fx.toLocaleString('en-US')} ${C.cur} per dollar.</div></div>
+  <div class="card"><h4>🏛 Government support in ${C.n}</h4>${e.schemes.length?e.schemes.map((x,i)=>`<div class="rec"><label class="tog" style="margin:0">${esc(x.n)} ${x.k!=='info'?`<input type="checkbox" data-sc="${i}" ${x.on?'checked':''}>`:''}</label><div class="mut">${esc(x.d)}</div>${x.k!=='info'?`<div class="row" style="margin:4px 0"><span class="mut">${x.k==='capex'?'Rebate on new machines':x.k==='export'?'Extra on export orders':'Share of loan interest paid'}</span><input type="number" data-sp="${i}" value="${x.p}" step="0.5" min="0" max="100" style="width:70px;border:2px solid var(--line);border-radius:8px;padding:3px 6px">%</div>`:''}</div>`).join(''):`<div class="mut">No textile-specific support is set for ${C.n}. Add your own below if your plant qualifies for any scheme.</div>`}
+  <div class="rec"><b>Your own support</b><div class="row" style="flex-wrap:wrap">${[['capex','Machine rebate'],['export','Export bonus'],['interest','Interest support']].map(([k,t])=>`<span class="mut">${t}</span><input type="number" data-cu="${k}" value="${e.custom[k]||0}" step="0.5" min="0" max="100" style="width:64px;border:2px solid var(--line);border-radius:8px;padding:3px 6px">%`).join(' ')}</div></div>
+  <div class="kpis" style="margin-top:8px"><div class="kpi"><span>Machine rebate</span><b>${subPct('capex')}%</b></div><div class="kpi"><span>Export bonus</span><b>${subPct('export')}%</b></div><div class="kpi"><span>Interest support</span><b>${Math.min(100,subPct('interest'))}%</b></div><div class="kpi"><span>Received so far</span><b class="up">${short(Object.values(finState().months).reduce((a,m)=>a+(m.subsidy||0),0))}</b></div></div>
+  <div class="mut" style="margin-top:6px">Simplified from schemes in force in late 2026. Rates and eligibility change, so check official sources for a real plant.</div></div>`}
+function econInit(){const tc=$('tc');tc.addEventListener('change',e=>{const t=e.target,e2=G&&econ();if(!e2)return;
+ if(t.dataset.ec==='country')setCountry(t.value);else if(t.dataset.ec==='cur'){e2.cur=t.value;refreshStats();renderTab()}
+ else if(t.dataset.ec==='utilK'){e2.utilK=+t.value/100;renderTab()}else if(t.dataset.sc!=null){e2.schemes[+t.dataset.sc].on=t.checked;renderTab()}else if(t.dataset.sp!=null){e2.schemes[+t.dataset.sp].p=Math.max(0,+t.value||0);renderTab()}else if(t.dataset.cu){e2.custom[t.dataset.cu]=Math.max(0,+t.value||0);renderTab()}});
+ tc.addEventListener('input',e=>{const t=e.target;if(t.dataset.ec==='utilK'){const b=$('ukv');if(b)b.textContent=t.value+'% of base'}});
+ tc.addEventListener('click',e=>{const b=e.target.closest('[data-ec]');if(!b||b.tagName==='SELECT'||b.tagName==='INPUT')return;const e2=econ(),C=COUNTRIES[e2.country];if(b.dataset.ec==='wageTyp'){G.wage=C.op;(G.cfg=G.cfg||{}).wage=C.op}if(b.dataset.ec==='utilTyp')e2.utilK=(ECON[e2.country]||{}).utilK||1;renderTab()})}
+
 // ---------------------------------------------------------------------
 // BOOT
 // ---------------------------------------------------------------------
@@ -521,6 +804,6 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
 setInterval(()=>{if(UIS.inGame)refreshStats()},200);
 // the engine status line only matters while placing or with a machine selected
 setInterval(()=>{if(UIS.inGame)refreshInfo()},400);
-coachInit();
+coachInit();statusInit();finInit();econInit();{const sg=$('sRev').closest('.sg');if(sg){sg.style.cursor='pointer';sg.title='Click to see the revenue graph';sg.onclick=()=>UIS.inGame&&openRevenue()}}
 if(window.engineReady)onModelsReady();
 })();

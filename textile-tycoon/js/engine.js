@@ -280,7 +280,7 @@ const VIEWS=[
 let MONTH=60; // seconds of game time per month
 let G,machines=[],MID=0;
 function freshState(){return{money:40000,workers:9,month:0,dayT:0,speed:1,rep:50,revenue:0,research:{},inv:{greige:20,scoured:0,rfd:4,dyed:0,printed:0,fd:0,fp:0,recipe:3,paste:3,screens:3},orders:[],nextOrder:1,greige:250,loan:0,hist:[]}}
-const fmt=n=>'$'+Math.round(n).toLocaleString();
+const fmt=n=>window.fmtMoney?window.fmtMoney(n):'$'+Math.round(n).toLocaleString();
 const unlocked=k=>{const d=DEF[k];return !d.research||!!G.research[d.research]};
 
 // ---------- building models & placement ----------
