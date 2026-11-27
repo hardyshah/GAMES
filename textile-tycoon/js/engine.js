@@ -407,7 +407,7 @@ function loadTag(txt){const s=new T.Sprite(new T.SpriteMaterial({map:spriteTex(t
 function trolleyModel(kind){const g=new T.Group();const f=kind==='drum'?'colour_drum_trolley':'batching_trolley';
  if(MODELS[f]){const c=MODELS[f].clone();if(kind!=='drum')c.rotation.y=PI/2;g.add(c)}else{const b=batcher(g,{col:0x1f6fd0,fab:0x1b2a4a,r:.55});b.scale.setScalar(.75);b.rotation.y=PI/2}
  g.updateMatrixWorld(true);const bb=new T.Box3().setFromObject(g),c=bb.getCenter(new T.Vector3());g.children.forEach(o=>{o.position.x-=c.x;o.position.z-=c.z});g.userData.len=bb.getSize(new T.Vector3()).z;return g}
-function trolleyCount(L){const bays=machines.filter(m=>m.type==='bay').length,k=Object.keys(LOOPS).find(q=>LOOPS[q]===L),r=RULES.loops[k];return Math.min(r.max,r.start+Math.floor(bays*r.perBay))}
+function trolleyCount(L){if(window.trolleyFor){const k=Object.keys(LOOPS).find(q=>LOOPS[q]===L);const n=window.trolleyFor(k);if(n!=null)return n}const bays=machines.filter(m=>m.type==='bay').length,k=Object.keys(LOOPS).find(q=>LOOPS[q]===L),r=RULES.loops[k];return Math.min(r.max,r.start+Math.floor(bays*r.perBay))}
 function syncTrolleys(force){const want={};for(const k in LOOPS)want[k]=trolleyCount(LOOPS[k]);if(!force&&movers.length&&Object.keys(LOOPS).every(k=>movers.filter(v=>v.k===k).length===want[k]))return;
  for(const v of movers){MOV.remove(v.tr);v.ws.forEach(w=>{MOV.remove(w.root);WKS.splice(WKS.indexOf(w),1)})}movers=[];
  for(const k in LOOPS){const L=LOOPS[k],n=want[k];for(let i=0;i<n;i++){const tr=trolleyModel(L.kind);MOV.add(tr);const tot=Math.min(RULES.maxLoad,L.loads[i%L.loads.length]+L.tare),np=crewFor(tot);
@@ -421,7 +421,7 @@ GA.push((t)=>{for(const v of movers){const{L,tr,ws,np,len}=v,d=v.d0+t*L.sp,p=L.a
 // SIMULATION
 // =====================================================================
 function count(type,running){return machines.filter(m=>m.type===type&&(!running||!m.broken)).length}
-function speedOf(m){let s=1+.25*(m.level-1);s*=1+.05*Math.min(3,count('bay',1));
+function speedOf(m){let s=(1+.25*(m.level-1))*(window.speedMul?window.speedMul(m):1);s*=1+.05*Math.min(3,count('bay',1));
  if(count('boiler',1)&&['prep','dye','finish'].includes(m.def.zone))s*=1.15;
  if(m.type==='jet'||m.type==='jigger')s*=1+.1*Math.min(2,count('chem',1));return s}
 function pendingQty(t){return G.orders.filter(o=>o.type===t).reduce((a,o)=>a+o.qty,0)}
@@ -439,6 +439,7 @@ function sim(dt){
   if(d.util){m.running=!m.broken;m.status=m.broken?'Broken':'Running';continue}
   if(m.broken){m.running=false;m.status='Broken — repair it';continue}
   if(!m.worker){m.running=false;m.status='No operator';continue}
+  if(!m.hold&&window.blockOf){const bl=window.blockOf(m);if(bl){m.running=false;m.status=bl;continue}}
   if(!m.hold){if(tryStart(m))m.hold=true;else{m.running=false;m.status='Waiting for '+missing(m);continue}}
   m.running=true;m.status='Running';m.progress+=dt*speedOf(m);
   if(m.progress>=d.time){m.progress=0;m.hold=false;finish(m)}}

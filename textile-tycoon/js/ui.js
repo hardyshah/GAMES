@@ -60,7 +60,7 @@ function confetti(on){const cv=$('confetti');if(!on){cv.classList.add('hidden');
 window.onProduce=function(m){if(G&&UIS.inGame&&maybeReject(m))return;if(G&&G.fin&&!m.def.util)G.fin.today.lots++;if(!UIS.inGame||m.def.util)return;const now=performance.now();if(now-(UIS.lastPop[m.id]||0)<1800||UIS.popCount>6)return;UIS.lastPop[m.id]=now;
  const v=new THREE.Vector3(m.x,(m.def.h||4)+2.2,m.z),p=project(v);if(!p||p.x<0||p.y<0||p.x>innerWidth||p.y>innerHeight-170)return;
  const out=m.def.stenter?(m.lot==='printed'?'Finished printed':'Finished dyed'):MAT[Object.keys(m.def.out)[0]]||'';UIS.popCount++;setTimeout(()=>UIS.popCount--,1900);popAt(p.x,p.y,'+1 '+out)};
-window.onDeliver=function(o){book('orders',o.reward);econDeliver(o);finState().today.del++;const st=G.stats=G.stats||{};st.revenue=(st.revenue||0)+o.reward;st[o.type]=(st[o.type]||0)+o.qty;if(o.exp)st.exports=(st.exports||0)+1;st.monthRev=(st.monthRev||0)+o.reward;
+window.onDeliver=function(o){book('orders',o.reward);{const pf=fabric().price;if(pf!==1){const d=Math.round(o.reward*(pf-1));G.money+=d;book('orders',d)}}econDeliver(o);finState().today.del++;const st=G.stats=G.stats||{};st.revenue=(st.revenue||0)+o.reward;st[o.type]=(st[o.type]||0)+o.qty;if(o.exp)st.exports=(st.exports||0)+1;st.monthRev=(st.monthRev||0)+o.reward;
  const x=innerWidth/2,y=innerHeight/2-40;coinBurst(x,y);popAt(x,y-20,'+'+money(o.reward),'bigpop');checkGoals()};
 window.onMonth=function(cost){if(G.nightShift){const x=G.workers*(G.wage||600)*.4;G.money-=x;cost+=x}recordMonth(cost);finMonth(cost);riskMonth();econMonth();machines.forEach(m=>m.age=(m.age||0)+1);const st=G.stats=G.stats||{};st.lastRev=st.monthRev||0;st.monthRev=0;banner(monthName(G.month),'running costs −'+money(cost));checkGoals();renderDock()};
 
@@ -78,7 +78,7 @@ window.refreshStats=function(){if(!G)return;const target=G.money;UIS.cashShown+=
  $('plantName').textContent=G.plantName||'My Plant';$('scnName').textContent=scn(G.scenario).name+(G.scenarioDone?' · complete':'');
  if(performance.now()-(UIS.lastDock||0)>1500){UIS.lastDock=performance.now();renderDock()}};
 document.querySelectorAll('.speed button').forEach(b=>b.onclick=()=>{const s=+b.dataset.s;if(s===0)G.paused=true;else{G.paused=false;G.speed=s}$('pp').textContent=G.paused?'▶':'❚❚';refreshStats()});
-const DOCK=[['build','i-build','Build'],['orders','i-orders','Orders'],['research','i-research','Research'],['finance','i-finance','Finance'],['staff','i-staff','Staff'],['rules','i-rules','Rules'],['goals','i-goals','Goals'],['views','i-views','Views'],['save','i-save','Save'],['menu','i-menu','Menu']];
+const DOCK=[['build','i-build','Build'],['prod','i-trend','Capacity'],['orders','i-orders','Orders'],['research','i-research','Research'],['finance','i-finance','Finance'],['staff','i-staff','Staff'],['rules','i-rules','Rules'],['goals','i-goals','Goals'],['views','i-views','Views'],['save','i-save','Save'],['menu','i-menu','Menu']];
 function dockMenu(btn,items){closeDockMenu();const r=btn.getBoundingClientRect();const m=document.createElement('div');m.className='dkm';m.id='dkm';
  m.innerHTML=items.map(([k,i,t,d],n)=>`<button data-k="${n}">${ico(i)}<span>${t}${d?`<small>${d}</small>`:''}</span></button>`).join('');document.body.appendChild(m);
  m.style.left=Math.min(innerWidth-m.offsetWidth-8,Math.max(8,r.left+r.width/2-m.offsetWidth/2))+'px';m.style.top=(r.top-m.offsetHeight-10)+'px';
@@ -103,13 +103,13 @@ function renderDock(){const d=$('dock');if(!d.children.length){d.innerHTML=DOCK.
 // ---------------------------------------------------------------------
 // PANELS
 // ---------------------------------------------------------------------
-const PANEL_META={build:['i-build','Build machines'],orders:['i-orders','Orders'],research:['i-research','Research lab'],finance:['i-finance','Finance'],staff:['i-staff','Staff & handlers'],rules:['i-rules','Plant rules'],goals:['i-goals','Scenario goals'],views:['i-views','Camera views']};
+const PANEL_META={build:['i-build','Build machines'],prod:['i-trend','Capacity, trolleys & skills'],orders:['i-orders','Orders'],research:['i-research','Research lab'],finance:['i-finance','Finance'],staff:['i-staff','Staff & handlers'],rules:['i-rules','Plant rules'],goals:['i-goals','Scenario goals'],views:['i-views','Camera views']};
 function togglePanel(k){if(UIS.panel===k)return closePanel();UIS.panel=k;tab=k;const p=$('panel');p.classList.remove('hidden');p.style.animation='none';void p.offsetWidth;p.style.animation='';$('pIco').innerHTML=`<use href="#${PANEL_META[k][0]}"/>`;$('pTitle').textContent=PANEL_META[k][1];renderTab();renderDock()}
 function closePanel(){UIS.panel=null;$('panel').classList.add('hidden');renderDock()}
 $('pClose').onclick=closePanel;
 function stockRow(keys){return '<div class="stockrow">'+keys.map(k=>`<span class="stk">${MAT[k]} <b>${+G.inv[k].toFixed(1)}</b></span>`).join('')+'</div>'}
 function recipe(d){if(d.stenter)return 'Dyed or printed → finished';if(d.util)return d.desc.split('.')[0];const i=Object.keys(d.need).map(k=>MAT[k]).join(' + ');return (i?i+' → ':'Makes ')+Object.keys(d.out).map(k=>MAT[k]).join('')}
-const SUBS={finance:[['ov','Overview'],['st','Statements'],['mk','Market'],['ln','Loans'],['cs','Consultant']],staff:[['op','Operators'],['org','Organisation'],['rk','Quality & security'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Country, costs & rules']],views:[['cam','Cameras'],['dsp','Display & time']]};
+const SUBS={prod:[['cap','Capacity'],['trl','Trolleys'],['skl','Skills'],['fab','Fabric']],finance:[['ov','Overview'],['st','Statements'],['mk','Market'],['ln','Loans'],['cs','Consultant']],staff:[['op','Operators'],['org','Organisation'],['rk','Quality & security'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Country, costs & rules']],views:[['cam','Cameras'],['dsp','Display & time']]};
 UIS.sub={};const subOf=k=>UIS.sub[k]||(SUBS[k]?SUBS[k][0][0]:'');
 function subBar(k){return SUBS[k]?'<div class="sub">'+SUBS[k].map(([i,t])=>`<button data-u="sub" data-k="${i}" class="${subOf(k)===i?'on':''}">${t}</button>`).join('')+'</div>':''}
 window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');let h=subBar(k);const sb=subOf(k);
@@ -142,6 +142,7 @@ window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');
   if(!s.goals.length)h+='<div class="card"><h4>No goals in free play</h4><div class="mut">Build, expand and enjoy. Every scenario is available from New game.</div></div>';
   else{const left=s.months?s.months-G.month:null;h+=`<div class="kpis"><div class="kpi"><span>Time left</span><b>${left==null?'∞':Math.max(0,left)+' months'}</b></div>${s.loseCash!=null?`<div class="kpi"><span>Bankrupt below</span><b class="down">${short(s.loseCash)}</b></div>`:''}<div class="kpi"><span>Status</span><b>${G.scenarioDone?'🏆 Won':'In progress'}</b></div></div>`;
    s.goals.forEach(g=>{const v=goalValue(g.k),pct=Math.max(0,Math.min(100,v/g.n*100));h+=`<div class="card"><h4>${pct>=100?'✅ ':''}${g.label}</h4><div class="mut">${g.k==='cash'||g.k==='revenue'?money(v):Math.round(v)} of ${g.k==='cash'||g.k==='revenue'?money(g.n):g.n}</div><div class="bar2${pct>=100?' done':''}"><i style="width:${pct}%"></i></div></div>`})}}
+ else if(k==='prod'){h+=sb==='trl'?troHTML():sb==='skl'?sklHTML():sb==='fab'?fabHTML():capHTML()}
  else if(k==='views'&&sb==='dsp'){h+=displayHTML()}
  else if(k==='views'){h+='<div class="grid">'+VIEWS.map((v,i)=>`<button class="mc" data-u="view" data-k="${i}" style="animation-delay:${i*30}ms"><b>${v[0]}</b><span class="rec">${esc(v[5].slice(0,110))}${v[5].length>110?'…':''}</span></button>`).join('')+'</div>'}
  if(tc._h===h)return;const fresh=tc._k!==k+'|'+sb;tc._h=h;tc._k=k+'|'+sb;const st=tc.scrollTop;tc.innerHTML=h;tc.scrollTop=fresh?0:st;
@@ -154,6 +155,12 @@ $('tc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b
  if(b.dataset.u==='sub'){UIS.sub[UIS.panel]=b.dataset.k;renderTab()}
  if(b.dataset.u==='tod'){const v=b.dataset.k;if(v==='auto')DN.lock=null;else DN.lock=+v;renderTab()}
  if(b.dataset.rk){const r=riskS();r[b.dataset.rk]=+b.dataset.rv;const L=b.dataset.rk==='maint'?MAINT:SEC;toast((b.dataset.rk==='maint'?'🛠 ':'🛡 ')+L[+b.dataset.rv][0]+(L[+b.dataset.rv][2]?' — '+money(L[+b.dataset.rv][2])+'/mo':''));renderTab()}
+ if(b.dataset.tr){const m=machines.find(q=>q.id===+b.dataset.tr);if(m)train(m)}
+ if(b.dataset.up){const m=machines.find(q=>q.id===+b.dataset.up);if(m&&m.level<3){const c=upCost(m);if(G.money>=c){G.money-=c;book('upgrade',-c);m.level++;toast('⬆ '+m.name+' upgraded to level '+m.level);renderTab()}}}
+ if(b.dataset.tb){const k=b.dataset.tb,c=TRO[k].cost;if(G.money>=c){G.money-=c;book('capex',-c);fleet()[k]++;syncTrolleys(true);toast('🛒 '+TRO[k].n+' bought ('+fleet()[k]+')');renderTab()}}
+ if(b.dataset.ts){const k=b.dataset.ts,v=TRO[k].cost*.4;fleet()[k]--;G.money+=v;book('msale',v);syncTrolleys(true);renderTab()}
+ if(b.dataset.to){const o=TOPT.find(x=>x[0]===b.dataset.to);if(G.money>=o[3]){G.money-=o[3];book('upgrade',-o[3]);fleet().opt[o[0]]=1;toast('⚙ '+o[1]+' installed');renderTab()}}
+ if(b.dataset.fab){G.fab=b.dataset.fab;toast('🧵 Now running '+fabric().n+' ('+fabric().gsm+' gsm)');renderTab()}
  if(b.dataset.u==='org'){openOrg()}
  if(b.dataset.u==='rev'){openRevenue()}
  if(b.dataset.c){runConsult(b.dataset.c,$('tc'))}
@@ -167,7 +174,7 @@ $('tc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b
 function confettiSmall(el){const r=el.getBoundingClientRect();for(let i=0;i<12;i++)popAt(r.left+r.width/2+(Math.random()-.5)*80,r.top+(Math.random()-.5)*30,['✨','🎉','⭐'][i%3],'pop')}
 window.refreshInfo=function(){const box=$('info'),h=box.querySelector('h2'),p=box.querySelector('p');
  if(tool){const d=DEF[tool];h.textContent='Placing: '+d.name;p.textContent='Click a green spot in '+(ZONES[d.zone]?ZONES[d.zone].name:'any department')+'. R rotates · Esc cancels · right-click stops placing.';box.classList.remove('quiet')}
- else if(sel){h.textContent=sel.def.icon+' '+sel.name;p.textContent=sel.def.desc;box.classList.remove('quiet')}
+ else if(sel){h.textContent=sel.def.icon+' '+sel.name;const r=ratedNow(sel);p.textContent=(r?r[0].toFixed(r[0]<20?1:0)+' '+r[1]+' · ':'')+(sel.def.time?capDay(sel).toFixed(1)+' lots/day · ':'')+(sel.def.util?'':'operator '+SKL[skillOf(sel)]+' ★'+skillOf(sel)+' · ')+sel.def.desc;box.classList.remove('quiet')}
  else box.classList.add('quiet')};
 
 // ---------------------------------------------------------------------
@@ -272,6 +279,7 @@ function renderWizard(){const st=WZ.step,s=scn(WZ.scenario);
    <div class="fld"><label>Plant name</label><input type="text" id="wName" value="${esc(WZ.name)}"></div>
    <div class="fld"><label>Country (staff names &amp; salaries)</label><select id="wCountry" style="font:700 15px var(--body);border:2px solid var(--line);border-radius:12px;padding:8px">${Object.entries(COUNTRIES).map(([k,c])=>`<option value="${k}" ${k===(WZ.country||'IN')?'selected':''}>${c.n}</option>`).join('')}</select></div>
    <div class="fld"><label>Show money in</label><select id="wCur" style="font:700 15px var(--body);border:2px solid var(--line);border-radius:12px;padding:8px"><option value="local" ${WZ.cur!=='usd'?'selected':''}>${COUNTRIES[WZ.country||'IN'].cur} (local)</option><option value="usd" ${WZ.cur==='usd'?'selected':''}>US dollars</option></select><button class="btn ghost sm" id="wTypW" style="margin-top:6px">Typical operator wage in ${COUNTRIES[WZ.country||'IN'].n}: $${COUNTRIES[WZ.country||'IN'].op}/mo</button></div>
+   <div class="fld"><label>Fabric programme</label><select id="wFab" style="font:700 15px var(--body);border:2px solid var(--line);border-radius:12px;padding:8px">${Object.entries(FABRICS).map(([k,f])=>`<option value="${k}" ${k===(WZ.fab||'medium')?'selected':''}>${f.n} · ${f.gsm} gsm</option>`).join('')}</select></div>
    ${rng('cash','Starting cash',-50000,400000,5000,v=>money(v))}
    ${rng('operators','Operators (labour)',0,60,1,v=>v+' <span class="mut">· '+prod+' machines need one</span>')}
    ${rng('wage','Wage per operator',300,1500,50,v=>money(v)+'/mo')}
@@ -287,6 +295,7 @@ function renderWizard(){const st=WZ.step,s=scn(WZ.scenario);
  o.querySelectorAll('input[type=range]').forEach(r=>r.oninput=()=>{WZ[r.dataset.r]=+r.value;r.parentElement.querySelector('b').innerHTML=r._fmt(r.value)});
  o.querySelectorAll('input[type=range]').forEach(r=>{const f=RF[r.dataset.r];r._fmt=f});
  o.querySelectorAll('[data-t]').forEach(c=>c.onchange=()=>WZ[c.dataset.t]=c.checked);
+ const wf=o.querySelector('#wFab');if(wf)wf.onchange=()=>WZ.fab=wf.value;
  const wc=o.querySelector('#wCountry');if(wc)wc.onchange=()=>{WZ.country=wc.value;renderWizard()};const wcu=o.querySelector('#wCur');if(wcu)wcu.onchange=()=>WZ.cur=wcu.value;const wtw=o.querySelector('#wTypW');if(wtw)wtw.onclick=()=>{WZ.wage=COUNTRIES[WZ.country||'IN'].op;renderWizard()};
  const nm=o.querySelector('#wName');if(nm)nm.oninput=()=>WZ.name=nm.value;
  const up=o.querySelector('#upf');if(up)up.onchange=e=>readSheet(e.target.files[0]);
@@ -351,12 +360,12 @@ function startGame(c){closeModal();hideMenu();const s=scn(c.scenario);clearPlant
  for(const q of ms){if(!DEF[q[0]]){skipped++;continue}if(rectOK(DEF[q[0]],q[1],q[2],q[3]||0,null)){skipped++;continue}addMachine(q[0],q[1],q[2],q[3]||0,q[4]?{name:q[4]}:undefined)}
  const util=[['boiler',c.boiler,[72,-26]],['qc',c.qc,[-8,32]],['etp',c.etp,[80,26]]];
  for(const[t,on,p]of util){if(!on||machines.some(m=>m.type===t))continue;if(t==='etp')G.research.etp=1;let at=p;if(rectOK(DEF[t],p[0],p[1],0,null)){const sp=autoSpot(t,machines.map(m=>[m.type,m.x,m.z,m.rot]));if(!sp){toast('⚠️ No room for the '+DEF[t].name);continue}at=sp}addMachine(t,at[0],at[1],0)}
- G.workers=c.operators;G.nightShift=!!c.night;G.org={country:c.country||'IN'};G.econ=econDefaults(c.country||'IN');G.econ.cur=c.cur==='usd'?'usd':'local';G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
+ G.workers=c.operators;G.nightShift=!!c.night;G.fab=c.fab||'medium';G.tro={batch:12,drum:4,opt:{},hist:[]};G.org={country:c.country||'IN'};G.econ=econDefaults(c.country||'IN');G.econ.cur=c.cur==='usd'?'usd':'local';G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
  syncTrolleys();newOrder();newOrder();G.fin=null;finState();UIS.rep=null;UIS.cashShown=G.money;UIS.slot=null;enterGame();go(0);
  banner('Welcome to '+G.plantName,s.name);if(skipped)toast('⚠️ '+skipped+' machines did not fit and were left out');
  if(s.goals.length)setTimeout(()=>togglePanel('goals'),900)}
-function enterGame(){UIS.inGame=true;window.menuOrbit=false;G.paused=false;if(!G.speed)G.speed=1;['chip','bar','z','info','dock','status','clock','tutBtn'].forEach(id=>$(id)&&$(id).classList.remove('hidden'));closeModal();renderDock();refreshStats();renderTab();if(UIS.panel)renderTab()}
-function exitGame(){UIS.inGame=false;closePanel();select(null);if(tool)setTool(null);['chip','bar','z','info','dock','status','clock','tutBtn'].forEach(id=>$(id)&&$(id).classList.add('hidden'))}
+function enterGame(){UIS.inGame=true;window.menuOrbit=false;G.paused=false;if(!G.speed)G.speed=1;['chip','bar','z','info','dock','status','clock','tutBtn','ncB'].forEach(id=>$(id)&&$(id).classList.remove('hidden'));closeModal();renderDock();refreshStats();renderTab();if(UIS.panel)renderTab()}
+function exitGame(){UIS.inGame=false;closePanel();select(null);if(tool)setTool(null);['chip','bar','z','info','dock','status','clock','tutBtn','ncB','ncP'].forEach(id=>$(id)&&$(id).classList.add('hidden'))}
 
 // ---------------------------------------------------------------------
 // GOALS, WIN / LOSE
@@ -477,6 +486,7 @@ function diagnose(){
  const ok=G.orders.find(o=>G.inv[o.type]>=o.qty);if(ok)return via('orders',null,'[data-a=deliver][data-k="'+ok.id+'"]','An order is ready','You have enough fabric for order #'+ok.id+' — deliver it for '+money(ok.reward)+'.');
  const need=machines.filter(m=>!m.def.util).length;if(G.workers<need)return money4(1500,()=>via('staff','op','[data-a=hire]','Machines without operators',(need-G.workers)+' machine'+(need-G.workers>1?'s have':' has')+' nobody to run '+(need-G.workers>1?'them':'it')+'. Hire an operator.'));
  // a machine waiting for input
+ {const st=machines.find(m=>m.status==='Waiting for a free trolley');if(st)return money4(TRO.batch.cost,()=>via('prod','trl','[data-tb=batch]','No free trolleys',st.name+' cannot unload: every trolley is holding fabric. Buy more batch trolleys.'))}
  const waiting=machines.filter(m=>isProd(m)&&!m.running&&m.worker&&!m.broken&&needOf(m));
  const stent=machines.find(m=>m.def.stenter&&!m.running&&G.inv.dyed<1&&G.inv.printed<1);
  const tries=waiting.map(m=>[m,needOf(m)]);if(stent)tries.push([stent,'dyed']);
@@ -721,7 +731,7 @@ function openStatements(tab){tab=tab||UIS.stTab||'pl';UIS.stTab=tab;const f=finS
 const MAINT=[['Breakdown only','Fix machines when they fail',0,1],['Preventive maintenance','Weekly checks, cleaning, calibration',1200,.55],['Total productive maintenance','Daily operator care + planned overhauls',3000,.3]];
 const SEC=[['No security','Open gates, no guards',0,1],['Guards at the gate','Two guards per shift, gate passes',900,.4],['Guards + CCTV + stock audits','Cameras, locked stores, weekly counts',2200,.1]];
 const riskS=()=>{G.risk=G.risk||{maint:0,sec:0,rej:0,rejV:0,theft:0,theftV:0,log:[]};return G.risk};
-function rejectRate(m){const r=riskS();let p=.07*MAINT[r.maint][3]*(1-.3*(m.level-1));if(G.research.lean)p*=.7;if(m.age>24)p*=1.3;return Math.max(.004,p)}
+function rejectRate(m){const r=riskS();let p=.07*MAINT[r.maint][3]*(1-.3*(m.level-1))*(1.3-.15*skillOf(m));if(G.research.lean)p*=.7;if(m.age>24)p*=1.3;return Math.max(.004,p)}
 function lotValue(k){return k==='fp'?560:k==='fd'?385:k==='printed'||k==='dyed'?G.greige*1.6:G.greige*1.25}
 function lossBook(kind,v){const f=finState(),L=f.loss=f.loss||{},mo=L[G.month]=L[G.month]||{};mo[kind]=(mo[kind]||0)+v}
 function maybeReject(m){if(m.def.util||!m.def.out)return false;if(Math.random()>=rejectRate(m))return false;const k=m.def.stenter?(m.lot==='printed'?'fp':'fd'):Object.keys(m.def.out)[0];if(!k||G.inv[k]<1)return false;
@@ -779,6 +789,99 @@ function econInit(){const tc=$('tc');tc.addEventListener('change',e=>{const t=e.
  tc.addEventListener('input',e=>{const t=e.target;if(t.dataset.ec==='utilK'){const b=$('ukv');if(b)b.textContent=t.value+'% of base'}});
  tc.addEventListener('click',e=>{const b=e.target.closest('[data-ec]');if(!b||b.tagName==='SELECT'||b.tagName==='INPUT')return;const e2=econ(),C=COUNTRIES[e2.country];if(b.dataset.ec==='wageTyp'){G.wage=C.op;(G.cfg=G.cfg||{}).wage=C.op}if(b.dataset.ec==='utilTyp')e2.utilK=(ECON[e2.country]||{}).utilK||1;renderTab()})}
 
+
+// =====================================================================
+// PRODUCTION REALISM — fabric programme, rated machine speeds, operator
+// skills, trolley fleet (fixed payload, WIP sits on trolleys), capacity
+// planner with bottlenecks, trolley optimisations, notification centre.
+// =====================================================================
+const LOT_M=1000, WIDTH_M=1.6;                       // one lot = 1,000 m of 1.6 m wide fabric
+const FABRICS={
+ light:{n:'Cotton voile',gsm:90,d:'Light, fast to run, lower price',f:{prep:1.2,dye:1.15,print:1.1,fin:1.25},price:.9},
+ medium:{n:'Cotton poplin',gsm:140,d:'The standard shirting quality',f:{prep:1,dye:1,print:1,fin:1},price:1},
+ blend:{n:'Poly-cotton blend',gsm:160,d:'Needs HT dyeing; good prices',f:{prep:1,dye:.85,print:.95,fin:.95},price:1.08},
+ heavy:{n:'Cotton twill / drill',gsm:280,d:'Heavy and slow, best prices',f:{prep:.75,dye:.7,print:.8,fin:.7},price:1.22}};
+// rated speed at level 1 with a standard operator on cotton poplin
+const RATED={desize:[100,'m/min','prep'],bleach:[60,'m/min','prep'],jet:[9,'m/min eq. (batch)','dye'],jigger:[35,'m/min (batch)','dye'],baby:[12,'m/min','print'],rotary:[45,'m/min','print'],flatbed:[22,'m/min','print'],digital:[16,'m/min','print'],stenter:[45,'m/min','fin'],
+ station:[40,'recipes/h','sup'],kitchen:[180,'kg paste/h','sup'],autokit:[400,'kg paste/h','sup'],coater:[6,'screens/h','sup'],laser:[14,'screens/h','sup'],qc:[60,'m/min','fin']};
+const fabric=()=>FABRICS[(G&&G.fab)||'medium'];
+const lotKg=()=>Math.round(fabric().gsm*WIDTH_M*LOT_M/1000);
+const skillOf=m=>m.skill||2;
+const skillF=m=>.7+.15*skillOf(m);                    // skill 1 ×0.85 … 5 ×1.45
+window.speedMul=m=>{if(m.def.util||!G)return 1;const r=RATED[m.type];let f=skillF(m);if(r&&r[2]!=='sup')f*=fabric().f[r[2]]||1;return f};
+function capDay(m){if(m.def.util||!m.def.time)return 0;const night=G.nightShift?.9:.35,shift=(16+8*night)/24;return DN.len*speedOf(m)/m.def.time*shift*(m.broken?0:1)}
+function ratedNow(m){const r=RATED[m.type];if(!r)return null;return[r[0]*speedOf(m),r[1]]}
+// ---- trolleys
+const TRO={batch:{n:'Fabric batch trolley',cost:1500,tare:140},drum:{n:'Colour drum trolley',cost:900,tare:60}};
+const TOPT=[['alu','Aluminium trolleys','Tare 140 → 95 kg, so each trolley carries more fabric',4000],['rfid','RFID tracking & dispatch board','Find empty trolleys fast: +20% usable fleet',6000],['fifo','FIFO lanes & batch-to-full-load rule','Fewer half-empty trolleys: +15% usable fleet',3000],['racks','Fabric racks at each machine','Buffer 2 lots off-trolley per stage',5000]];
+function fleet(){const t=G.tro=G.tro||{batch:12,drum:4,opt:{},hist:[]};t.opt=t.opt||{};t.hist=t.hist||[];return t}
+const payload=()=>RULES.maxLoad-(fleet().opt.alu?95:TRO.batch.tare);
+const trolleysPerLot=()=>Math.ceil(lotKg()/payload());
+const usableK=()=>1+(fleet().opt.rfid?.2:0)+(fleet().opt.fifo?.15:0);
+function wipLots(){const i=G.inv;return i.scoured+i.rfd+i.dyed+i.printed}
+function troCapLots(){return Math.floor(fleet().batch*usableK()/trolleysPerLot())+(fleet().opt.racks?8:0)}
+function troUse(){const cap=troCapLots(),w=Math.ceil(wipLots());return{cap,w,used:Math.min(fleet().batch,Math.ceil(Math.max(0,w-(fleet().opt.racks?8:0))*trolleysPerLot()/usableK())),pct:cap?Math.min(1,w/cap):1}}
+const WK=['scoured','rfd','dyed','printed'];const WIPOUT=m=>m.def.out&&WK.some(k=>m.def.out[k])&&!WK.some(k=>m.def.need&&m.def.need[k]);
+window.blockOf=m=>{if(!G||!UIS.inGame||!WIPOUT(m))return '';return wipLots()+1>troCapLots()?'Waiting for a free trolley':''};
+window.trolleyFor=k=>{if(!G||!G.tro)return null;const t=fleet(),b=t.batch;if(k==='C')return Math.min(12,t.drum);return Math.min(18,k==='A'?Math.ceil(b*.6):Math.floor(b*.4))};
+function troSample(){const t=fleet(),u=troUse();t.hist.push(u.pct);if(t.hist.length>200)t.hist.shift();t.blocked=(t.blocked||0)+machines.filter(m=>m.status==='Waiting for a free trolley').length}
+const troIdle=()=>{const h=fleet().hist;return h.length?1-h.reduce((a,b)=>a+b,0)/h.length:1};
+// ---- capacity planner
+const STAGES=[['prep1','Singeing',['desize'],'greige→scoured'],['prep2','Desize, scour & bleach',['bleach'],'scoured→ready'],['dye','Dyeing',['jet','jigger'],'ready→dyed'],['print','Printing',['baby','rotary','flatbed','digital'],'ready→printed'],['fin','Stentering & finishing',['stenter'],'dyed/printed→finished']];
+function capacity(){const st={};for(const[k,n,ts]of STAGES){const ms=machines.filter(m=>ts.includes(m.type));st[k]={n,ms,cap:ms.reduce((a,m)=>a+capDay(m),0)}}
+ const sup=t=>machines.filter(m=>t.includes(m.type)).reduce((a,m)=>a+capDay(m),0);st.recipes={n:'Dye recipes (dispensing)',cap:sup(['station']),need:st.dye.cap};st.paste={n:'Print paste (colour kitchen)',cap:sup(['kitchen','autokit']),need:st.print.cap};st.screens={n:'Screens (engraving)',cap:sup(['coater','laser'])*6,need:st.print.cap};
+ const pending=G.orders.reduce((a,o)=>a+Math.max(0,o.qty-G.inv[o.type]),0),days=Math.max(1,G.orders.reduce((a,o)=>a+Math.max(1,o.due-G.month)*30,0)/Math.max(1,G.orders.length));
+ const flow=Math.min(st.prep1.cap,st.prep2.cap,st.dye.cap+st.print.cap,st.fin.cap);const order=['prep1','prep2','wet','fin'];const vals={prep1:st.prep1.cap,prep2:st.prep2.cap,wet:st.dye.cap+st.print.cap,fin:st.fin.cap};
+ const bn=order.reduce((a,k)=>vals[k]<vals[a]?k:a,'prep1');return{st,flow,bn,vals,demand:pending/days*30/30,pending}}
+// ---- skills & training
+const trainCost=m=>500*skillOf(m)+(m.def.cost>15000?400:0);
+function train(m){if(skillOf(m)>=5)return;const c=trainCost(m);if(G.money<c){toast('Not enough cash');return}G.money-=c;book('hiring',-c);m.skill=skillOf(m)+1;toast('🎓 '+m.name+' operator trained to skill '+m.skill+' — '+Math.round(skillF(m)*100)+'% speed');renderTab()}
+// ---- panels
+const SKL=['','Trainee','Standard','Skilled','Expert','Master'];
+function capHTML(){const C=capacity(),mx=Math.max(1,...Object.values(C.vals)),names={prep1:'Singeing',prep2:'Desize, scour & bleach',wet:'Dyeing + printing',fin:'Stentering'};
+ let h=`<div class="kpis"><div class="kpi"><span>Plant output</span><b>${C.flow.toFixed(1)} lots/day</b></div><div class="kpi"><span>= metres/day</span><b>${Math.round(C.flow*LOT_M).toLocaleString('en-US')}</b></div><div class="kpi"><span>Bottleneck</span><b class="down">${names[C.bn]}</b></div><div class="kpi"><span>Orders still to make</span><b>${C.pending} lots</b></div></div>`;
+ h+=`<div class="card"><h4>Line balance (lots per day)</h4><div class="mut">A plant runs only as fast as its slowest stage. ${fabric().n}, ${fabric().gsm} gsm · 1 lot = ${LOT_M.toLocaleString()} m ≈ ${lotKg()} kg.</div>${['prep1','prep2','wet','fin'].map(k=>`<div class="capr${k===C.bn?' bn':''}"><span>${names[k]}${k===C.bn?' <b>⚠ bottleneck</b>':''}</span><div class="bar2"><i style="width:${C.vals[k]/mx*100}%"></i></div><b>${C.vals[k].toFixed(1)}</b></div>`).join('')}
+  ${['recipes','paste','screens'].map(k=>{const x=C.st[k];if(!x.need)return '';const ok=x.cap>=x.need;return `<div class="capr sm${ok?'':' bn'}"><span>${x.n}</span><div class="bar2${ok?' done':''}"><i style="width:${Math.min(100,x.cap/Math.max(.1,x.need)*100)}%"></i></div><b>${ok?'✓':'short'}</b></div>`}).join('')}</div>`;
+ for(const[k,n,ts,fl]of STAGES){const x=C.st[k];if(!x.ms.length)continue;h+=`<div class="card"><h4>${n} <span class="mut">· ${fl}</span></h4><table class="fs mt"><tr><th>Machine</th><th>Rated</th><th>Operator</th><th>Lots/day</th><th></th></tr>${x.ms.map(m=>{const r=ratedNow(m);return `<tr><td>${esc(m.name)} <span class="mut">L${m.level}</span>${m.broken?' 🔧':''}</td><td>${r?r[0].toFixed(r[0]<20?1:0)+' '+r[1].split(' ')[0]:''}</td><td>${SKL[skillOf(m)]} ★${skillOf(m)}</td><td><b>${capDay(m).toFixed(1)}</b></td><td><button class="btn sm ghost" data-up="${m.id}" ${m.level>=3?'disabled':''}>⬆ ${m.level>=3?'Max':short(upCost(m))}</button> <button class="btn sm ghost" data-tr="${m.id}" ${skillOf(m)>=5?'disabled':''}>🎓 ${skillOf(m)>=5?'Max':short(trainCost(m))}</button></td></tr>`}).join('')}</table></div>`}
+ return h}
+function troHTML(){const t=fleet(),u=troUse(),idle=troIdle(),tpl=trolleysPerLot();
+ return `<div class="kpis"><div class="kpi"><span>Batch trolleys</span><b>${t.batch}</b></div><div class="kpi"><span>Payload each</span><b>${payload()} kg</b></div><div class="kpi"><span>Trolleys per lot</span><b>${tpl}</b></div><div class="kpi"><span>Lots on trolleys</span><b class="${u.pct>.9?'down':''}">${u.w} / ${u.cap}</b></div><div class="kpi"><span>Average idle</span><b class="${idle>.5?'down':''}">${Math.round(idle*100)}%</b></div><div class="kpi"><span>Machine stops (no trolley)</span><b class="${t.blocked?'down':''}">${t.blocked||0}</b></div></div>
+ <div class="card"><h4>Fleet in use now</h4><div class="bar2${u.pct>.9?'':' done'}" style="height:16px"><i style="width:${u.pct*100}%"></i></div><div class="mut">Every lot waiting between processes sits on trolleys. A ${lotKg()} kg lot of ${fabric().n.toLowerCase()} needs ${tpl} trolley${tpl>1?'s':''} (max ${RULES.maxLoad} kg each including the ${t.opt.alu?95:140} kg trolley, one pusher). When the fleet is full, machines cannot unload and stop.</div></div>
+ <div class="card"><h4>Procurement</h4><div class="row"><span style="flex:1"><b>${TRO.batch.n}</b> · ${t.batch} owned</span><button class="btn green sm" data-tb="batch" ${G.money<TRO.batch.cost?'disabled':''}>Buy · ${money(TRO.batch.cost)}</button><button class="btn ghost sm" data-ts="batch" ${t.batch<2?'disabled':''}>Sell · ${money(TRO.batch.cost*.4)}</button></div>
+  <div class="row"><span style="flex:1"><b>${TRO.drum.n}</b> · ${t.drum} owned</span><button class="btn green sm" data-tb="drum" ${G.money<TRO.drum.cost?'disabled':''}>Buy · ${money(TRO.drum.cost)}</button><button class="btn ghost sm" data-ts="drum" ${t.drum<2?'disabled':''}>Sell · ${money(TRO.drum.cost*.4)}</button></div></div>
+ <div class="card"><h4>Workflow optimisation</h4>${TOPT.map(([k,n,d,c])=>`<div class="rec"><b>${n}</b>${t.opt[k]?'<span class="gain">✓ Installed</span>':`<span class="gain" style="color:#9a5b00">${money(c)}</span>`}<div class="mut">${d}</div>${t.opt[k]?'':`<button class="btn sm" data-to="${k}" ${G.money<c?'disabled':''}>Install</button>`}</div>`).join('')}</div>`}
+function sklHTML(){const prod=machines.filter(m=>!m.def.util&&m.def.time);return `<div class="card"><h4>Operator skills</h4><div class="mut">Each machine's operator has a skill level for that machine. Skill raises speed (★1 ×0.85 … ★5 ×1.45) and lowers rejects. Training costs money once.</div>
+ <table class="fs mt"><tr><th>Machine</th><th>Operator skill</th><th>Speed</th><th></th></tr>${prod.map(m=>`<tr><td>${esc(m.name)}</td><td>${'★'.repeat(skillOf(m))}<span style="color:#e3cfac">${'★'.repeat(5-skillOf(m))}</span> ${SKL[skillOf(m)]}</td><td>×${skillF(m).toFixed(2)}</td><td><button class="btn sm ghost" data-tr="${m.id}" ${skillOf(m)>=5?'disabled':''}>🎓 ${skillOf(m)>=5?'Master':'Train · '+short(trainCost(m))}</button></td></tr>`).join('')}</table></div>`}
+function fabHTML(){const cur=G.fab||'medium';return `<div class="card"><h4>Fabric programme</h4><div class="mut">The quality you run changes how fast every machine goes, how heavy a lot is (so how many trolleys it needs) and what buyers pay.</div><div class="grid" style="grid-template-columns:repeat(2,1fr)">${Object.entries(FABRICS).map(([k,f])=>`<button class="mc${cur===k?' on':''}" data-fab="${k}" style="min-height:0"><b>${f.n} · ${f.gsm} gsm</b><span class="rec">${f.d}</span><span class="cost">Speed: prep ×${f.f.prep} · dye ×${f.f.dye} · print ×${f.f.print} · stenter ×${f.f.fin}</span><span class="cost">Price ×${f.price} · ${Math.round(f.gsm*WIDTH_M)} kg/lot · ${Math.ceil(Math.round(f.gsm*WIDTH_M)/payload())} trolley(s)/lot</span></button>`).join('')}</div></div>`}
+// ---- notification centre
+function notes(){const N=[],C=capacity(),names={prep1:'Singeing',prep2:'Desize, scour & bleach',wet:'Dyeing + printing',fin:'Stentering'},t=fleet(),u=troUse();
+ // bottleneck
+ const bnTypes=C.bn==='wet'?['jet','jigger','baby','rotary','flatbed','digital']:C.bn==='prep1'?['desize']:C.bn==='prep2'?['bleach']:['stenter'];const bm=machines.filter(m=>bnTypes.includes(m.type));
+ const second=Object.entries(C.vals).filter(([k])=>k!==C.bn).sort((a,b)=>a[1]-b[1])[0];const gap=second?second[1]-C.vals[C.bn]:0;
+ if(bm.length||C.vals[C.bn]===0){const acts=[];const slow=bm.filter(m=>m.level<3).sort((a,b)=>capDay(a)-capDay(b))[0];if(slow)acts.push(['⬆ Upgrade '+slow.name,upCost(slow),()=>{const c=upCost(slow);if(G.money>=c){G.money-=c;book('upgrade',-c);slow.level++}}]);
+  const low=bm.filter(m=>skillOf(m)<5).sort((a,b)=>skillOf(a)-skillOf(b))[0];if(low)acts.push(['🎓 Train '+low.name+' operator',trainCost(low),()=>train(low)]);
+  const bt=bnTypes.find(x=>unlocked(x)&&x!=='digital')||bnTypes[0];acts.push(['🏗 Build another '+DEF[bt].name,DEF[bt].cost,()=>{closeNotes();UIS.cat=DEF[bt].zone;if(UIS.panel!=='build')togglePanel('build');setTool(bt)}]);
+  N.push({lvl:'hi',ico:'🚧',t:'Bottleneck: '+names[C.bn],w:names[C.bn]+' can do '+C.vals[C.bn].toFixed(1)+' lots/day'+(gap>0?', '+gap.toFixed(1)+' less than the next slowest stage':'')+'. The whole plant runs at this pace.',acts})}
+ // support shortages
+ for(const k of ['recipes','paste','screens']){const x=C.st[k];if(x.need&&x.cap<x.need*.9){const typ=k==='recipes'?'station':k==='paste'?'kitchen':'coater';N.push({lvl:'md',ico:'🧪',t:x.n+' cannot keep up',w:'It supplies '+x.cap.toFixed(1)+' a day but the '+(k==='recipes'?'dyeing':'printing')+' machines can use '+x.need.toFixed(1)+'.',acts:[['🏗 Build '+DEF[typ].name,DEF[typ].cost,()=>{closeNotes();UIS.cat=DEF[typ].zone;if(UIS.panel!=='build')togglePanel('build');setTool(typ)}]]})}}
+ // trolleys
+ const stuck=machines.filter(m=>m.status==='Waiting for a free trolley');if(stuck.length||u.pct>.85){const need=Math.max(trolleysPerLot()*2,Math.ceil((u.w+4)*trolleysPerLot()/usableK())-t.batch);const acts=[['🛒 Buy '+need+' batch trolleys',need*TRO.batch.cost,()=>{const c=need*TRO.batch.cost;if(G.money>=c){G.money-=c;book('capex',-c);t.batch+=need;syncTrolleys(true)}}]];
+  for(const[k,n,,c]of TOPT)if(!t.opt[k]){acts.push(['⚙ '+n,c,()=>{if(G.money>=c){G.money-=c;book('upgrade',-c);t.opt[k]=1}}]);break}
+  N.push({lvl:stuck.length?'hi':'md',ico:'🛒',t:stuck.length?stuck.length+' machine'+(stuck.length>1?'s':'')+' stopped: no free trolley':'Trolley fleet almost full',w:u.w+' lots are waiting on trolleys; the fleet holds '+u.cap+'. Each lot needs '+trolleysPerLot()+' trolleys.',acts})}
+ else if(troIdle()>.6&&t.hist.length>30&&t.batch>trolleysPerLot()*4){const extra=Math.floor(t.batch*.3);N.push({lvl:'lo',ico:'💤',t:'Trolleys standing idle',w:Math.round(troIdle()*100)+'% of the batch fleet is idle on average. Sell some to free cash.',acts:[['Sell '+extra+' trolleys',-extra*TRO.batch.cost*.4,()=>{t.batch-=extra;const v=extra*TRO.batch.cost*.4;G.money+=v;book('msale',v);syncTrolleys(true)}]]})}
+ // low-skill operators on busy machines
+ const ls=machines.filter(m=>!m.def.util&&m.def.time&&skillOf(m)<=1);if(ls.length)N.push({lvl:'lo',ico:'🎓',t:ls.length+' trainee operator'+(ls.length>1?'s':''),w:'Trainees run machines at 85% speed and spoil more lots.',acts:[['Train all to standard',ls.reduce((a,m)=>a+trainCost(m),0),()=>ls.forEach(train)]]});
+ // demand vs output
+ if(C.pending>0&&C.flow>0){const daysNeed=C.pending/C.flow;const soon=Math.min(...G.orders.map(o=>o.due-G.month))*30;if(daysNeed>soon+5)N.push({lvl:'md',ico:'⏱',t:'Orders are ahead of capacity',w:'Open orders need '+daysNeed.toFixed(0)+' days of output; the first one is due in about '+Math.max(0,soon)+' days.',acts:[[G.nightShift?'Night shift already on':'🌙 Start night shift',0,()=>setNight(true)]]})}
+ return N}
+function closeNotes(){const n=$('ncP');if(n)n.classList.add('hidden')}
+function renderNotes(force){const N=notes(),b=$('ncB');const hi=N.filter(n=>n.lvl!=='lo').length;b.querySelector('i').textContent=N.length||'';b.querySelector('i').style.display=N.length?'':'none';b.classList.toggle('hot',hi>0);
+ const p=$('ncP');if(p.classList.contains('hidden')&&!force)return;const html=`<header><b>🔔 Notification centre</b><button class="x" data-n="x">✕</button></header><div class="ncl">${N.length?N.map((n,i)=>`<div class="nci ${n.lvl}"><div class="nh"><span>${n.ico}</span><b>${esc(n.t)}</b></div><div class="mut">${esc(n.w)}</div><div class="row">${n.acts.map((a,j)=>`<button class="btn sm ${j?'ghost':'gold'}" data-na="${i}.${j}" ${a[1]>0&&G.money<a[1]?'disabled':''}>${esc(a[0])}${a[1]>0?' · '+short(a[1]):a[1]<0?' · +'+short(-a[1]):''}</button>`).join('')}</div></div>`).join(''):'<div class="nci lo"><div class="nh"><span>✅</span><b>No bottlenecks right now</b></div><div class="mut">Your line is balanced and the trolley fleet has room.</div></div>'}</div>`;
+ if(p._h!==html){p._h=html;p.innerHTML=html;p._N=N}}
+function ncInit(){const b=document.createElement('button');b.id='ncB';b.className='hidden';b.title='Notification centre: bottlenecks and how to fix them';b.innerHTML='🔔<i></i>';b.onclick=()=>{const p=$('ncP');p.classList.toggle('hidden');renderNotes(true)};$('tutBtn').before(b);
+ const p=document.createElement('div');p.id='ncP';p.className='hidden';document.body.appendChild(p);p.onclick=e=>{const x=e.target.closest('[data-n]');if(x)return closeNotes();const a=e.target.closest('[data-na]');if(a&&!a.disabled){const[i,j]=a.dataset.na.split('.').map(Number);p._N[i].acts[j][2]();p._h='';renderNotes(true);refreshStats();renderTab()}};
+ setInterval(()=>{if(UIS.inGame){troSample();renderNotes()}},1500)}
+
 // ---------------------------------------------------------------------
 // BOOT
 // ---------------------------------------------------------------------
@@ -804,6 +907,6 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;
 setInterval(()=>{if(UIS.inGame)refreshStats()},200);
 // the engine status line only matters while placing or with a machine selected
 setInterval(()=>{if(UIS.inGame)refreshInfo()},400);
-coachInit();statusInit();finInit();econInit();{const sg=$('sRev').closest('.sg');if(sg){sg.style.cursor='pointer';sg.title='Click to see the revenue graph';sg.onclick=()=>UIS.inGame&&openRevenue()}}
+coachInit();statusInit();finInit();econInit();ncInit();{const sg=$('sRev').closest('.sg');if(sg){sg.style.cursor='pointer';sg.title='Click to see the revenue graph';sg.onclick=()=>UIS.inGame&&openRevenue()}}
 if(window.engineReady)onModelsReady();
 })();
