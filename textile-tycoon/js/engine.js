@@ -421,7 +421,7 @@ GA.push((t)=>{for(const v of movers){const{L,tr,ws,np,len}=v,d=v.d0+t*L.sp,p=L.a
 // SIMULATION
 // =====================================================================
 function count(type,running){return machines.filter(m=>m.type===type&&(!running||!m.broken)).length}
-function speedOf(m){let s=(1+.25*(m.level-1))*(window.speedMul?window.speedMul(m):1);s*=1+.05*Math.min(3,count('bay',1));
+function speedOf(m){let s=(window.levelSpeed?window.levelSpeed(m):1+.25*(m.level-1))*(window.speedMul?window.speedMul(m):1);s*=1+.05*Math.min(3,count('bay',1));
  if(count('boiler',1)&&['prep','dye','finish'].includes(m.def.zone))s*=1.15;
  if(m.type==='jet'||m.type==='jigger')s*=1+.1*Math.min(2,count('chem',1));return s}
 function pendingQty(t){return G.orders.filter(o=>o.type===t).reduce((a,o)=>a+o.qty,0)}
@@ -518,7 +518,7 @@ addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;const k=e.ke
 const PAL=['#c8503c','#d98b2b','#e3c23a','#5f9e4a','#2f8f8a','#3c78b8','#6a5fb0','#b4558f','#e8e8e4','#8c96a0','#3b4450','#1a1f26'];
 const pe=$('pe');
 function sellMachine(m){const v=Math.round(m.def.cost*.4*(1+.5*(m.level-1)));G.money+=v;toast(m.name+' sold for '+fmt(v));removeMachine(m);syncTrolleys()}
-function upCost(m){return Math.round(m.def.cost*.5*m.level)}
+function upCost(m){return window.upCostF?window.upCostF(m):Math.round(m.def.cost*.5*m.level)}
 function repCost(m){return Math.round(m.def.cost*.1)}
 function buildEditor(){if(!sel){pe.style.display='none';return}const m=sel,d=m.def,[w,dd]=dims(d,m.rot);pe.style.display='block';
  pe.innerHTML=`<h3><input id="peN" value="${m.name.replace(/"/g,'&quot;')}"><button id="peX">✕</button></h3><div class="b">
@@ -531,7 +531,7 @@ function buildEditor(){if(!sel){pe.style.display='none';return}const m=sel,d=m.d
  <div class="row"><button id="peR">⟳ Rotate 90°</button><button id="peF">🎯 Focus</button></div>
  <div class="sec">Colour</div><div class="row">${PAL.map(c=>`<button class="sw" style="background:${c}" data-c="${c}"></button>`).join('')}<input type="color" id="peC" value="${m.col||'#3c78b8'}"><button id="peU">Reset</button></div>
  <div class="sec">Operations</div><div class="row">
- ${d.util?'':`<button id="peUp" ${m.level>=3||G.money<upCost(m)?'disabled':''}>⬆ Upgrade L${m.level+1} ${m.level>=3?'(max)':fmt(upCost(m))}</button>`}
+ ${d.util?'':`<button id="peUp" ${m.level>=(window.MAXL||3)||G.money<upCost(m)?'disabled':''} title="${window.upName?window.upName(m):''}">⬆ ${m.level>=(window.MAXL||3)?'Fully upgraded':(window.upName?window.upName(m):'Upgrade L'+(m.level+1))+' '+fmt(upCost(m))}</button>`}
  ${m.broken?`<button id="peRp" ${G.money<repCost(m)?'disabled':''}>🔧 Repair ${fmt(repCost(m))}</button>`:''}
  <button id="peCl" ${G.money<d.cost?'disabled':''}>⧉ Clone ${fmt(d.cost)}</button>
  <button id="peSl">💰 Sell ${fmt(d.cost*.4*(1+.5*(m.level-1)))}</button></div>
@@ -540,7 +540,7 @@ function buildEditor(){if(!sel){pe.style.display='none';return}const m=sel,d=m.d
  $('peXv').onchange=e=>tryMove(m,snap(+e.target.value),m.z,m.rot);$('peZv').onchange=e=>tryMove(m,m.x,snap(+e.target.value),m.rot);
  $('peR').onclick=()=>tryMove(m,m.x,m.z,(m.rot+1)%4);$('peF').onclick=()=>{goal.t.set(m.x,1.5,m.z);goal.r=Math.max(22,Math.max(w,dd)*2.4)};
  pe.querySelectorAll('.sw').forEach(b=>b.onclick=()=>paint(m,b.dataset.c));$('peC').oninput=e=>paint(m,e.target.value);$('peU').onclick=()=>unpaint(m);
- if($('peUp'))$('peUp').onclick=()=>{const c=upCost(m);if(G.money<c)return;G.money-=c;m.level++;toast(m.name+' upgraded to level '+m.level+' (+25% speed)');buildEditor()};
+ if($('peUp'))$('peUp').onclick=()=>{const c=upCost(m);if(G.money<c)return;if(m.level>=(window.MAXL||3))return;G.money-=c;m.level++;toast(m.name+' → level '+m.level+(window.upDone?': '+window.upDone(m):' (+25% speed)'));buildEditor()};
  if($('peRp'))$('peRp').onclick=()=>{const c=repCost(m);if(G.money<c)return;G.money-=c;m.broken=false;toast(m.name+' repaired');buildEditor()};
  $('peCl').onclick=()=>{if(G.money<d.cost)return;for(let r=1;r<40;r++)for(const[a,b]of[[r,0],[-r,0],[0,r],[0,-r],[r,r],[-r,-r]]){const nx=m.x+a*2,nz=m.z+b*2;if(!rectOK(d,nx,nz,m.rot,null)){G.money-=d.cost;const c=addMachine(m.type,nx,nz,m.rot,{col:m.col});syncTrolleys();select(c);toast('Cloned '+d.name);return}}toast('No free space for a clone in '+(ZONES[d.zone]?ZONES[d.zone].name:'the plant'))};
  $('peSl').onclick=()=>sellMachine(m);refreshEditorStatus()}

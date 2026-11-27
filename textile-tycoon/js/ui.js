@@ -109,7 +109,7 @@ function closePanel(){UIS.panel=null;$('panel').classList.add('hidden');renderDo
 $('pClose').onclick=closePanel;
 function stockRow(keys){return '<div class="stockrow">'+keys.map(k=>`<span class="stk">${MAT[k]} <b>${+G.inv[k].toFixed(1)}</b></span>`).join('')+'</div>'}
 function recipe(d){if(d.stenter)return 'Dyed or printed → finished';if(d.util)return d.desc.split('.')[0];const i=Object.keys(d.need).map(k=>MAT[k]).join(' + ');return (i?i+' → ':'Makes ')+Object.keys(d.out).map(k=>MAT[k]).join('')}
-const SUBS={prod:[['cap','Capacity'],['trl','Trolleys'],['skl','Skills'],['fab','Fabric']],finance:[['ov','Overview'],['st','Statements'],['mk','Market'],['ln','Loans'],['cs','Consultant']],staff:[['op','Operators'],['org','Organisation'],['rk','Quality & security'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Country, costs & rules']],views:[['cam','Cameras'],['dsp','Display & time']]};
+const SUBS={prod:[['cap','Capacity'],['loss','Losses & OEE'],['road','Improve'],['trl','Trolleys'],['skl','Skills'],['fab','Fabric']],finance:[['ov','Overview'],['st','Statements'],['mk','Market'],['ln','Loans'],['cs','Consultant']],staff:[['op','Operators'],['org','Organisation'],['rk','Quality & security'],['sh','Shifts'],['un','Uniforms']],rules:[['pr','Plant rules'],['st','Country, costs & rules']],views:[['cam','Cameras'],['dsp','Display & time']]};
 UIS.sub={};const subOf=k=>UIS.sub[k]||(SUBS[k]?SUBS[k][0][0]:'');
 function subBar(k){return SUBS[k]?'<div class="sub">'+SUBS[k].map(([i,t])=>`<button data-u="sub" data-k="${i}" class="${subOf(k)===i?'on':''}">${t}</button>`).join('')+'</div>':''}
 window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');let h=subBar(k);const sb=subOf(k);
@@ -142,7 +142,7 @@ window.renderTab=function(){const k=UIS.panel;if(!k||!G)return;const tc=$('tc');
   if(!s.goals.length)h+='<div class="card"><h4>No goals in free play</h4><div class="mut">Build, expand and enjoy. Every scenario is available from New game.</div></div>';
   else{const left=s.months?s.months-G.month:null;h+=`<div class="kpis"><div class="kpi"><span>Time left</span><b>${left==null?'∞':Math.max(0,left)+' months'}</b></div>${s.loseCash!=null?`<div class="kpi"><span>Bankrupt below</span><b class="down">${short(s.loseCash)}</b></div>`:''}<div class="kpi"><span>Status</span><b>${G.scenarioDone?'🏆 Won':'In progress'}</b></div></div>`;
    s.goals.forEach(g=>{const v=goalValue(g.k),pct=Math.max(0,Math.min(100,v/g.n*100));h+=`<div class="card"><h4>${pct>=100?'✅ ':''}${g.label}</h4><div class="mut">${g.k==='cash'||g.k==='revenue'?money(v):Math.round(v)} of ${g.k==='cash'||g.k==='revenue'?money(g.n):g.n}</div><div class="bar2${pct>=100?' done':''}"><i style="width:${pct}%"></i></div></div>`})}}
- else if(k==='prod'){h+=sb==='trl'?troHTML():sb==='skl'?sklHTML():sb==='fab'?fabHTML():capHTML()}
+ else if(k==='prod'){h+=sb==='loss'?lossHTML():sb==='road'?roadHTML():sb==='trl'?troHTML():sb==='skl'?sklHTML():sb==='fab'?fabHTML():capHTML()}
  else if(k==='views'&&sb==='dsp'){h+=displayHTML()}
  else if(k==='views'){h+='<div class="grid">'+VIEWS.map((v,i)=>`<button class="mc" data-u="view" data-k="${i}" style="animation-delay:${i*30}ms"><b>${v[0]}</b><span class="rec">${esc(v[5].slice(0,110))}${v[5].length>110?'…':''}</span></button>`).join('')+'</div>'}
  if(tc._h===h)return;const fresh=tc._k!==k+'|'+sb;tc._h=h;tc._k=k+'|'+sb;const st=tc.scrollTop;tc.innerHTML=h;tc.scrollTop=fresh?0:st;
@@ -155,8 +155,9 @@ $('tc').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b
  if(b.dataset.u==='sub'){UIS.sub[UIS.panel]=b.dataset.k;renderTab()}
  if(b.dataset.u==='tod'){const v=b.dataset.k;if(v==='auto')DN.lock=null;else DN.lock=+v;renderTab()}
  if(b.dataset.rk){const r=riskS();r[b.dataset.rk]=+b.dataset.rv;const L=b.dataset.rk==='maint'?MAINT:SEC;toast((b.dataset.rk==='maint'?'🛠 ':'🛡 ')+L[+b.dataset.rv][0]+(L[+b.dataset.rv][2]?' — '+money(L[+b.dataset.rv][2])+'/mo':''));renderTab()}
+ if(b.dataset.rd){startRoad(b.dataset.rd)}
  if(b.dataset.tr){const m=machines.find(q=>q.id===+b.dataset.tr);if(m)train(m)}
- if(b.dataset.up){const m=machines.find(q=>q.id===+b.dataset.up);if(m&&m.level<3){const c=upCost(m);if(G.money>=c){G.money-=c;book('upgrade',-c);m.level++;toast('⬆ '+m.name+' upgraded to level '+m.level);renderTab()}}}
+ if(b.dataset.up){const m=machines.find(q=>q.id===+b.dataset.up);if(m&&m.level<5){const c=upCost(m);if(G.money>=c){G.money-=c;book('upgrade',-c);m.level++;toast('⬆ '+m.name+' → L'+m.level+' '+LADDER[m.level].n);renderTab()}}}
  if(b.dataset.tb){const k=b.dataset.tb,c=TRO[k].cost;if(G.money>=c){G.money-=c;book('capex',-c);fleet()[k]++;syncTrolleys(true);toast('🛒 '+TRO[k].n+' bought ('+fleet()[k]+')');renderTab()}}
  if(b.dataset.ts){const k=b.dataset.ts,v=TRO[k].cost*.4;fleet()[k]--;G.money+=v;book('msale',v);syncTrolleys(true);renderTab()}
  if(b.dataset.to){const o=TOPT.find(x=>x[0]===b.dataset.to);if(G.money>=o[3]){G.money-=o[3];book('upgrade',-o[3]);fleet().opt[o[0]]=1;toast('⚙ '+o[1]+' installed');renderTab()}}
@@ -360,7 +361,7 @@ function startGame(c){closeModal();hideMenu();const s=scn(c.scenario);clearPlant
  for(const q of ms){if(!DEF[q[0]]){skipped++;continue}if(rectOK(DEF[q[0]],q[1],q[2],q[3]||0,null)){skipped++;continue}addMachine(q[0],q[1],q[2],q[3]||0,q[4]?{name:q[4]}:undefined)}
  const util=[['boiler',c.boiler,[72,-26]],['qc',c.qc,[-8,32]],['etp',c.etp,[80,26]]];
  for(const[t,on,p]of util){if(!on||machines.some(m=>m.type===t))continue;if(t==='etp')G.research.etp=1;let at=p;if(rectOK(DEF[t],p[0],p[1],0,null)){const sp=autoSpot(t,machines.map(m=>[m.type,m.x,m.z,m.rot]));if(!sp){toast('⚠️ No room for the '+DEF[t].name);continue}at=sp}addMachine(t,at[0],at[1],0)}
- G.workers=c.operators;G.nightShift=!!c.night;G.fab=c.fab||'medium';G.tro={batch:12,drum:4,opt:{},hist:[]};G.org={country:c.country||'IN'};G.econ=econDefaults(c.country||'IN');G.econ.cur=c.cur==='usd'?'usd':'local';G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
+ G.workers=c.operators;G.nightShift=!!c.night;G.fab=c.fab||'medium';G.road={};G.tro={batch:12,drum:4,opt:{},hist:[]};G.org={country:c.country||'IN'};G.econ=econDefaults(c.country||'IN');G.econ.cur=c.cur==='usd'?'usd':'local';G.tod=0;if(s.broken){machines.filter(m=>!m.def.util).slice(0,s.broken).forEach(m=>m.broken=true)}
  syncTrolleys();newOrder();newOrder();G.fin=null;finState();UIS.rep=null;UIS.cashShown=G.money;UIS.slot=null;enterGame();go(0);
  banner('Welcome to '+G.plantName,s.name);if(skipped)toast('⚠️ '+skipped+' machines did not fit and were left out');
  if(s.goals.length)setTimeout(()=>togglePanel('goals'),900)}
@@ -449,7 +450,7 @@ function settingsHTML(){return `<div class="card"><h4>Live working rules</h4><di
 function displayHTML(){const t=[['auto','Live clock'],[7,'Morning'],[13,'Noon'],[18.7,'Sunset'],[23,'Night']];
  return `<div class="card"><h4>Time of day</h4><div class="mut">Lock the light for a screenshot or presentation. The plant keeps running on its own clock.</div><div class="chips">${t.map(([v,n])=>`<button class="chipb${(DN.lock==null&&v==='auto')||DN.lock===v?' on':''}" data-u="tod" data-k="${v}">${n}</button>`).join('')}</div></div>
  <div class="card"><h4>Display</h4><div class="row"><button class="btn ghost sm" onclick="document.getElementById('lbl').click()">Machine labels: ${showLabels?'on':'off'}</button><button class="btn ghost sm" onclick="document.getElementById('fx').click()">High quality: ${useFX?'on':'off'}</button></div></div>`}
-window.onFrame=function(rdt,gdt){if(!G)return;G.tod=(G.tod||0)+gdt;if(UIS.inGame){const dn=Math.floor((G.tod+DN.len*.25)/DN.len);if(G.dayIdx==null)G.dayIdx=dn;else if(dn>G.dayIdx){G.dayIdx=dn;finDay()}}const h=hourNow();
+window.onFrame=function(rdt,gdt){if(!G)return;if(UIS.inGame&&gdt>0){lossTick(gdt);breakFix()}G.tod=(G.tod||0)+gdt;if(UIS.inGame){const dn=Math.floor((G.tod+DN.len*.25)/DN.len);if(G.dayIdx==null)G.dayIdx=dn;else if(dn>G.dayIdx){G.dayIdx=dn;finDay()}}const h=hourNow();
  window.shiftRate=isNight(((G.tod||0)/DN.len*24+6)%24)?(G.nightShift?.9:.35):1;applyLight(UIS.inGame?h:15);
  if(UIS.inGame&&performance.now()-(DN.lastC||0)>250){DN.lastC=performance.now();refreshClock();const wasN=DN.wasN,nowN=isNight(((G.tod||0)/DN.len*24+6)%24);if(wasN!=null&&wasN!==nowN&&DN.lock==null)banner(nowN?'Night falls':'Sunrise',nowN?(G.nightShift?'night shift takes over':'skeleton crew · 35% output'):'day shift starts');DN.wasN=nowN}};
 $('cNight').onclick=()=>setNight(!G.nightShift);$('cSkip').onclick=skipNight;
@@ -662,7 +663,7 @@ function consultRecs(){const R=[],wage=G.wage||600,prod=machines.filter(m=>!m.de
  if(G.loan>=10000&&G.money>G.loan+30000)R.push({v:G.loan*.01,t:'Pay off the bank loan',w:'Interest costs '+money(G.loan*.01)+' a month and you have the cash.',a:'Repay '+money(G.loan),f:()=>{G.money-=G.loan;G.loan=0}});
  const late=G.orders.filter(o=>o.due-G.month<=1&&G.inv[o.type]<o.qty).length;if(!G.nightShift&&late)R.push({v:late*2500,t:'Run a night shift',w:late+' order'+(late>1?'s are':' is')+' due within a month and short of fabric. Night output rises from 35% to 90%.',a:'Start night shift',f:()=>setNight(true)});
  if(G.nightShift&&!G.orders.length)R.push({v:G.workers*wage*.4,t:'Stop the night shift',w:'No orders are waiting, so the extra 40% wages buy nothing.',a:'Stop night shift',f:()=>setNight(false)});
- const busy=prod.filter(m=>m.running&&m.level<3).sort((a,b)=>b.produced-a.produced)[0];if(busy)R.push({v:upCost(busy)*.12,t:'Upgrade the '+busy.name,w:'It is your busiest machine ('+busy.produced+' lots). A level up makes it faster.',a:'Upgrade · '+money(upCost(busy)),f:()=>{const c=upCost(busy);if(G.money>=c){G.money-=c;busy.level++}}});
+ const busy=prod.filter(m=>m.running&&m.level<5).sort((a,b)=>b.produced-a.produced)[0];if(busy)R.push({v:upCost(busy)*.12,t:'Upgrade the '+busy.name,w:'It is your busiest machine ('+busy.produced+' lots). A level up makes it faster.',a:'Upgrade · '+money(upCost(busy)),f:()=>{const c=upCost(busy);if(G.money>=c){G.money-=c;busy.level++}}});
  {const r=riskS(),prodN=machines.filter(m=>!m.def.util&&m.def.out).length,avg=prodN?machines.filter(m=>!m.def.util&&m.def.out).reduce((a,m)=>a+rejectRate(m),0)/prodN:0;
   if(r.maint<2&&avg>.035){const nx=r.maint+1,save=Math.round(r.rejV/Math.max(1,G.month)*(1-MAINT[nx][3]/MAINT[r.maint][3]))||Math.round(avg*prodN*60*400*(1-MAINT[nx][3]/MAINT[r.maint][3]));R.push({v:Math.max(0,save-MAINT[nx][2]+MAINT[r.maint][2])+800,t:'Move to '+MAINT[nx][0].toLowerCase(),w:'About '+(avg*100).toFixed(1)+'% of lots are rejected ('+short(r.rejV)+' lost so far). '+MAINT[nx][1]+' cuts rejections to ×'+MAINT[nx][3]+'.',a:'Switch · '+money(MAINT[nx][2])+'/mo',f:()=>{r.maint=nx}})}
   if(r.sec<2&&r.theft>0){const nx=r.sec+1;R.push({v:Math.max(500,Math.round(r.theftV/Math.max(1,G.month)*(1-SEC[nx][3]/SEC[r.sec][3]))-SEC[nx][2]+SEC[r.sec][2]),t:'Improve security: '+SEC[nx][0].toLowerCase(),w:r.theft+' theft'+(r.theft>1?'s':'')+' so far cost '+short(r.theftV)+'. '+SEC[nx][1]+' cuts the risk to ×'+SEC[nx][3]+'.',a:'Switch · '+money(SEC[nx][2])+'/mo',f:()=>{r.sec=nx}})}}
@@ -731,7 +732,7 @@ function openStatements(tab){tab=tab||UIS.stTab||'pl';UIS.stTab=tab;const f=finS
 const MAINT=[['Breakdown only','Fix machines when they fail',0,1],['Preventive maintenance','Weekly checks, cleaning, calibration',1200,.55],['Total productive maintenance','Daily operator care + planned overhauls',3000,.3]];
 const SEC=[['No security','Open gates, no guards',0,1],['Guards at the gate','Two guards per shift, gate passes',900,.4],['Guards + CCTV + stock audits','Cameras, locked stores, weekly counts',2200,.1]];
 const riskS=()=>{G.risk=G.risk||{maint:0,sec:0,rej:0,rejV:0,theft:0,theftV:0,log:[]};return G.risk};
-function rejectRate(m){const r=riskS();let p=.07*MAINT[r.maint][3]*(1-.3*(m.level-1))*(1.3-.15*skillOf(m));if(G.research.lean)p*=.7;if(m.age>24)p*=1.3;return Math.max(.004,p)}
+let rejectRate=function(m){const r=riskS();let p=.07*MAINT[r.maint][3]*(1-.3*(m.level-1))*(1.3-.15*skillOf(m));if(G.research.lean)p*=.7;if(m.age>24)p*=1.3;return Math.max(.004,p)}
 function lotValue(k){return k==='fp'?560:k==='fd'?385:k==='printed'||k==='dyed'?G.greige*1.6:G.greige*1.25}
 function lossBook(kind,v){const f=finState(),L=f.loss=f.loss||{},mo=L[G.month]=L[G.month]||{};mo[kind]=(mo[kind]||0)+v}
 function maybeReject(m){if(m.def.util||!m.def.out)return false;if(Math.random()>=rejectRate(m))return false;const k=m.def.stenter?(m.lot==='printed'?'fp':'fd'):Object.keys(m.def.out)[0];if(!k||G.inv[k]<1)return false;
@@ -842,7 +843,7 @@ function capHTML(){const C=capacity(),mx=Math.max(1,...Object.values(C.vals)),na
  let h=`<div class="kpis"><div class="kpi"><span>Plant output</span><b>${C.flow.toFixed(1)} lots/day</b></div><div class="kpi"><span>= metres/day</span><b>${Math.round(C.flow*LOT_M).toLocaleString('en-US')}</b></div><div class="kpi"><span>Bottleneck</span><b class="down">${names[C.bn]}</b></div><div class="kpi"><span>Orders still to make</span><b>${C.pending} lots</b></div></div>`;
  h+=`<div class="card"><h4>Line balance (lots per day)</h4><div class="mut">A plant runs only as fast as its slowest stage. ${fabric().n}, ${fabric().gsm} gsm · 1 lot = ${LOT_M.toLocaleString()} m ≈ ${lotKg()} kg.</div>${['prep1','prep2','wet','fin'].map(k=>`<div class="capr${k===C.bn?' bn':''}"><span>${names[k]}${k===C.bn?' <b>⚠ bottleneck</b>':''}</span><div class="bar2"><i style="width:${C.vals[k]/mx*100}%"></i></div><b>${C.vals[k].toFixed(1)}</b></div>`).join('')}
   ${['recipes','paste','screens'].map(k=>{const x=C.st[k];if(!x.need)return '';const ok=x.cap>=x.need;return `<div class="capr sm${ok?'':' bn'}"><span>${x.n}</span><div class="bar2${ok?' done':''}"><i style="width:${Math.min(100,x.cap/Math.max(.1,x.need)*100)}%"></i></div><b>${ok?'✓':'short'}</b></div>`}).join('')}</div>`;
- for(const[k,n,ts,fl]of STAGES){const x=C.st[k];if(!x.ms.length)continue;h+=`<div class="card"><h4>${n} <span class="mut">· ${fl}</span></h4><table class="fs mt"><tr><th>Machine</th><th>Rated</th><th>Operator</th><th>Lots/day</th><th></th></tr>${x.ms.map(m=>{const r=ratedNow(m);return `<tr><td>${esc(m.name)} <span class="mut">L${m.level}</span>${m.broken?' 🔧':''}</td><td>${r?r[0].toFixed(r[0]<20?1:0)+' '+r[1].split(' ')[0]:''}</td><td>${SKL[skillOf(m)]} ★${skillOf(m)}</td><td><b>${capDay(m).toFixed(1)}</b></td><td><button class="btn sm ghost" data-up="${m.id}" ${m.level>=3?'disabled':''}>⬆ ${m.level>=3?'Max':short(upCost(m))}</button> <button class="btn sm ghost" data-tr="${m.id}" ${skillOf(m)>=5?'disabled':''}>🎓 ${skillOf(m)>=5?'Max':short(trainCost(m))}</button></td></tr>`}).join('')}</table></div>`}
+ for(const[k,n,ts,fl]of STAGES){const x=C.st[k];if(!x.ms.length)continue;h+=`<div class="card"><h4>${n} <span class="mut">· ${fl}</span></h4><table class="fs mt"><tr><th>Machine</th><th>Rated</th><th>Operator</th><th>Lots/day</th><th></th></tr>${x.ms.map(m=>{const r=ratedNow(m);return `<tr><td>${esc(m.name)} <span class="mut">L${m.level}</span>${m.broken?' 🔧':''}</td><td>${r?r[0].toFixed(r[0]<20?1:0)+' '+r[1].split(' ')[0]:''}</td><td>${SKL[skillOf(m)]} ★${skillOf(m)}</td><td><b>${capDay(m).toFixed(1)}</b></td><td><button class="btn sm ghost" data-up="${m.id}" ${m.level>=5?'disabled':''} title="${m.level<5?esc(window.upName(m)):''}">⬆ ${m.level>=5?'Max':'L'+(m.level+1)+' · '+short(upCost(m))}</button> <button class="btn sm ghost" data-tr="${m.id}" ${skillOf(m)>=5?'disabled':''}>🎓 ${skillOf(m)>=5?'Max':short(trainCost(m))}</button></td></tr>`}).join('')}</table></div>`}
  return h}
 function troHTML(){const t=fleet(),u=troUse(),idle=troIdle(),tpl=trolleysPerLot();
  return `<div class="kpis"><div class="kpi"><span>Batch trolleys</span><b>${t.batch}</b></div><div class="kpi"><span>Payload each</span><b>${payload()} kg</b></div><div class="kpi"><span>Trolleys per lot</span><b>${tpl}</b></div><div class="kpi"><span>Lots on trolleys</span><b class="${u.pct>.9?'down':''}">${u.w} / ${u.cap}</b></div><div class="kpi"><span>Average idle</span><b class="${idle>.5?'down':''}">${Math.round(idle*100)}%</b></div><div class="kpi"><span>Machine stops (no trolley)</span><b class="${t.blocked?'down':''}">${t.blocked||0}</b></div></div>
@@ -858,7 +859,7 @@ function notes(){const N=[],C=capacity(),names={prep1:'Singeing',prep2:'Desize, 
  // bottleneck
  const bnTypes=C.bn==='wet'?['jet','jigger','baby','rotary','flatbed','digital']:C.bn==='prep1'?['desize']:C.bn==='prep2'?['bleach']:['stenter'];const bm=machines.filter(m=>bnTypes.includes(m.type));
  const second=Object.entries(C.vals).filter(([k])=>k!==C.bn).sort((a,b)=>a[1]-b[1])[0];const gap=second?second[1]-C.vals[C.bn]:0;
- if(bm.length||C.vals[C.bn]===0){const acts=[];const slow=bm.filter(m=>m.level<3).sort((a,b)=>capDay(a)-capDay(b))[0];if(slow)acts.push(['⬆ Upgrade '+slow.name,upCost(slow),()=>{const c=upCost(slow);if(G.money>=c){G.money-=c;book('upgrade',-c);slow.level++}}]);
+ if(bm.length||C.vals[C.bn]===0){const acts=[];const slow=bm.filter(m=>m.level<5).sort((a,b)=>capDay(a)-capDay(b))[0];if(slow)acts.push(['⬆ Upgrade '+slow.name,upCost(slow),()=>{const c=upCost(slow);if(G.money>=c){G.money-=c;book('upgrade',-c);slow.level++}}]);
   const low=bm.filter(m=>skillOf(m)<5).sort((a,b)=>skillOf(a)-skillOf(b))[0];if(low)acts.push(['🎓 Train '+low.name+' operator',trainCost(low),()=>train(low)]);
   const bt=bnTypes.find(x=>unlocked(x)&&x!=='digital')||bnTypes[0];acts.push(['🏗 Build another '+DEF[bt].name,DEF[bt].cost,()=>{closeNotes();UIS.cat=DEF[bt].zone;if(UIS.panel!=='build')togglePanel('build');setTool(bt)}]);
   N.push({lvl:'hi',ico:'🚧',t:'Bottleneck: '+names[C.bn],w:names[C.bn]+' can do '+C.vals[C.bn].toFixed(1)+' lots/day'+(gap>0?', '+gap.toFixed(1)+' less than the next slowest stage':'')+'. The whole plant runs at this pace.',acts})}
@@ -869,6 +870,9 @@ function notes(){const N=[],C=capacity(),names={prep1:'Singeing',prep2:'Desize, 
   for(const[k,n,,c]of TOPT)if(!t.opt[k]){acts.push(['⚙ '+n,c,()=>{if(G.money>=c){G.money-=c;book('upgrade',-c);t.opt[k]=1}}]);break}
   N.push({lvl:stuck.length?'hi':'md',ico:'🛒',t:stuck.length?stuck.length+' machine'+(stuck.length>1?'s':'')+' stopped: no free trolley':'Trolley fleet almost full',w:u.w+' lots are waiting on trolleys; the fleet holds '+u.cap+'. Each lot needs '+trolleysPerLot()+' trolleys.',acts})}
  else if(troIdle()>.6&&t.hist.length>30&&t.batch>trolleysPerLot()*4){const extra=Math.floor(t.batch*.3);N.push({lvl:'lo',ico:'💤',t:'Trolleys standing idle',w:Math.round(troIdle()*100)+'% of the batch fleet is idle on average. Sell some to free cash.',acts:[['Sell '+extra+' trolleys',-extra*TRO.batch.cost*.4,()=>{t.batch-=extra;const v=extra*TRO.batch.cost*.4;G.money+=v;book('msale',v);syncTrolleys(true)}]]})}
+ {const nx=nextRoad(),P=plantOEE();if(nx&&(!roadDone().track||P.oee<.75)){const big=roadDone().track?Object.entries(P.L).sort((a,b)=>b[1]-a[1])[0]:null;
+  N.push({lvl:roadDone().track?'md':'lo',ico:'📉',t:roadDone().track?'OEE '+(P.oee*100).toFixed(0)+'% — biggest loss: '+LOSSN[big[0]]:'Losses are not being tracked',w:roadDone().track?LOSSN[big[0]]+' costs '+big[1].toFixed(1)+'% of output. Next improvement step: '+nx.n+'.':'You cannot see breakdown, changeover, minor-stop, speed and quality losses. Start with loss tracking.',acts:[['🧭 '+nx.n,nx.c,()=>startRoad(nx.id)]]})}
+  const worst=machines.filter(m=>!m.def.util&&m.def.time&&m.level<5).map(m=>[m,oeeOf(m)]).sort((a,b)=>a[1].oee-b[1].oee)[0];if(roadDone().track&&worst&&worst[1].oee<.65){const m=worst[0];N.push({lvl:'md',ico:'🔧',t:m.name+' runs at '+(worst[1].oee*100).toFixed(0)+'% OEE',w:'Next on its upgrade ladder: '+LADDER[m.level+1].n+' — '+LADDER[m.level+1].d+'.',acts:[['⬆ L'+(m.level+1)+' '+LADDER[m.level+1].n,upCostF(m),()=>{const c=upCostF(m);if(G.money>=c){G.money-=c;book('upgrade',-c);m.level++}}]]})}}
  // low-skill operators on busy machines
  const ls=machines.filter(m=>!m.def.util&&m.def.time&&skillOf(m)<=1);if(ls.length)N.push({lvl:'lo',ico:'🎓',t:ls.length+' trainee operator'+(ls.length>1?'s':''),w:'Trainees run machines at 85% speed and spoil more lots.',acts:[['Train all to standard',ls.reduce((a,m)=>a+trainCost(m),0),()=>ls.forEach(train)]]});
  // demand vs output
@@ -881,6 +885,80 @@ function renderNotes(force){const N=notes(),b=$('ncB');const hi=N.filter(n=>n.lv
 function ncInit(){const b=document.createElement('button');b.id='ncB';b.className='hidden';b.title='Notification centre: bottlenecks and how to fix them';b.innerHTML='🔔<i></i>';b.onclick=()=>{const p=$('ncP');p.classList.toggle('hidden');renderNotes(true)};$('tutBtn').before(b);
  const p=document.createElement('div');p.id='ncP';p.className='hidden';document.body.appendChild(p);p.onclick=e=>{const x=e.target.closest('[data-n]');if(x)return closeNotes();const a=e.target.closest('[data-na]');if(a&&!a.disabled){const[i,j]=a.dataset.na.split('.').map(Number);p._N[i].acts[j][2]();p._h='';renderNotes(true);refreshStats();renderTab()}};
  setInterval(()=>{if(UIS.inGame){troSample();renderNotes()}},1500)}
+
+
+// =====================================================================
+// SIX BIG LOSSES & OEE — every machine loses output to:
+//  Availability: L1 breakdowns, L2 setup & changeover
+//  Performance:  L3 minor stops, L4 reduced speed
+//  Quality:      L5 process defects, L6 start-up rejects
+// OEE = Availability × Performance × Quality. Losses fall through a
+// machine upgrade ladder (L1→L5, in order) and a plant improvement
+// roadmap (steps must be completed in sequence).
+// =====================================================================
+const LOSSN={L1:'Breakdowns',L2:'Setup & changeover',L3:'Minor stops',L4:'Reduced speed',L5:'Process defects',L6:'Start-up rejects'};
+const LOSSD={L1:'Unplanned stops while a machine is broken',L2:'Shade, design, screen and width changes before the next lot runs',L3:'Short stops under ~10 min: fabric creases, seam jams, lint on sensors',L4:'Running below rated speed: worn parts, cautious operators, drifting settings',L5:'Shade variation, print faults, width or skew defects in steady running',L6:'Fabric spoiled while a machine settles after a changeover'};
+// base loss % by process family (before any improvement)
+const LBASE={prep:{L2:6,L3:9,L4:8,L5:2.5,L6:1.5},dye:{L2:16,L3:5,L4:7,L5:4.5,L6:3},print:{L2:20,L3:11,L4:8,L5:5,L6:5},fin:{L2:8,L3:7,L4:10,L5:2.5,L6:2.5},sup:{L2:7,L3:4,L4:4,L5:1.5,L6:0}};
+// machine upgrade ladder: each level must follow the one before
+const LADDER=[null,null,
+ {n:'Overhaul & new wear parts',d:'Reduced speed −60%, breakdowns −30%',k:.3,spd:1,cut:{L4:.4,L1:.7}},
+ {n:'Drives & PLC controls',d:'+20% speed, minor stops −30%',k:.5,spd:1.2,cut:{L3:.7}},
+ {n:'Automatic process control',d:'Tension, temperature and humidity held steady: defects −50%, start-up rejects −40%, speed loss −50%',k:.6,spd:1.2,cut:{L5:.5,L6:.6,L4:.5}},
+ {n:'Latest-generation retrofit',d:'+45% rated speed, changeovers −40%',k:.9,spd:1.45,cut:{L2:.6}}];
+window.MAXL=5;
+const ladderAt=(m,l)=>LADDER[l];
+window.levelSpeed=m=>{let s=1;for(let l=2;l<=m.level;l++)s=LADDER[l].spd;return s};
+window.upCostF=m=>m.level>=5?0:Math.round(m.def.cost*LADDER[m.level+1].k);
+window.upName=m=>m.level>=5?'Fully upgraded':'L'+(m.level+1)+' '+LADDER[m.level+1].n;
+window.upDone=m=>LADDER[m.level].n+' — '+LADDER[m.level].d;
+// plant improvement roadmap, in order
+const ROAD=[
+ {id:'track',n:'Loss tracking & OEE dashboard',d:'Record every stop with its reason and time. Without it the six losses are only guesses.',c:3000,cut:{}},
+ {id:'5s',n:'5S & cleaning schedule',d:'Lint and sensor cleaning, sorted workplaces: minor stops −40%.',c:4000,cut:{L3:.6}},
+ {id:'am',n:'Autonomous maintenance',d:'Operators do daily checks and lubrication: breakdowns −40%, reduced speed −25%.',c:6000,cut:{L1:.6,L4:.75}},
+ {id:'smed',n:'Quick changeover (SMED)',d:'Pre-stage screens, recipes and batches; standard sequence: changeovers −50%, start-up rejects −40%.',c:8000,cut:{L2:.5,L6:.6}},
+ {id:'pm',n:'Planned maintenance & condition monitoring',d:'Vibration and temperature checks, parts replaced on schedule: breakdowns −50%, reduced speed −50%.',c:12000,cut:{L1:.5,L4:.5}},
+ {id:'qas',n:'Quality at source',d:'Trace every defect to machine, shift and time: process defects −50%, start-up rejects −30%.',c:10000,cut:{L5:.5,L6:.7}},
+ {id:'auto',n:'Process automation & data integration',d:'Automatic parameter control and live machine data: speed loss −50%, minor stops −30%, defects −30%.',c:20000,cut:{L4:.5,L3:.7,L5:.7}}];
+const roadDone=()=>{G.road=G.road||{};return G.road};
+const nextRoad=()=>ROAD.find(r=>!roadDone()[r.id]);
+function famOf(m){const r=RATED[m.type];return r?r[2]:'sup'}
+function lossesOf(m){const b=LBASE[famOf(m)]||LBASE.sup,L={L2:b.L2,L3:b.L3,L4:b.L4,L5:b.L5,L6:b.L6};
+ const age=Math.min(24,m.age||0);L.L4+=age*.25;L.L3+=age*.1;                                   // ageing machines slow down and stop more
+ const sk=skillOf(m);L.L2*=1.25-.1*sk;L.L3*=1.2-.08*sk;L.L6*=1.3-.12*sk;                        // skill
+ const mp=riskS().maint;L.L4*=[1,.8,.65][mp];L.L5*=[1,.85,.7][mp];
+ for(let l=2;l<=m.level;l++)for(const k in LADDER[l].cut)if(L[k]!=null)L[k]*=LADDER[l].cut[k];
+ for(const r of ROAD)if(roadDone()[r.id])for(const k in r.cut)if(L[k]!=null)L[k]*=r.cut[k];
+ // L1 from actual downtime this game (or expected from breakdown odds)
+ const T=Math.max(1,m.runT||0),dn=m.downT||0;L.L1=Math.min(40,dn/(T+dn)*100||breakOdds(m)*100*1.5);
+ for(const k in L)L[k]=Math.max(0,+L[k].toFixed(2));return L}
+function breakOdds(m){let p=(G.brk!=null?G.brk:.025);if(G.research.lean)p*=.5;for(let l=2;l<=m.level;l++)if(LADDER[l].cut.L1)p*=LADDER[l].cut.L1;for(const r of ROAD)if(roadDone()[r.id]&&r.cut.L1)p*=r.cut.L1;return p*(1+Math.min(24,m.age||0)/24)}
+function oeeOf(m){const L=lossesOf(m);const A=(1-L.L1/100)*(1-L.L2/100),P=(1-L.L3/100)*(1-L.L4/100),Q=(1-L.L5/100)*(1-L.L6/100);return{A,P,Q,oee:A*P*Q,L}}
+// rated (theoretical) speed is above old game pace; planned losses (L2–L4) bring it back down
+const RATED_K=1.42;
+{const prev=window.speedMul;window.speedMul=m=>{const b=prev(m);if(m.def.util||!G)return b;const L=lossesOf(m);return b*RATED_K*(1-L.L2/100)*(1-L.L3/100)*(1-L.L4/100)}}
+// quality losses become rejected lots; breakdown odds follow the improvements
+rejectRate=function(m){const L=lossesOf(m);return Math.max(.002,(L.L5+L.L6)/100)};
+function lossTick(dt){for(const m of machines){if(m.def.util)continue;if(m.broken)m.downT=(m.downT||0)+dt;else if(m.worker)m.runT=(m.runT||0)+dt}}
+// re-roll engine breakdowns to match the improved odds (engine rolls a flat chance each month)
+function breakFix(){for(const m of machines)if(m.broken&&m._wasOk&&!m._fixRolled){m._fixRolled=1;const base=(G.research.lean?.5:1)*(G.brk!=null?G.brk:.025),want=breakOdds(m);if(want<base&&Math.random()>want/base){m.broken=false}}for(const m of machines){if(!m.broken){m._wasOk=1;m._fixRolled=0}}}
+// ---- report
+function plantOEE(){const ms=machines.filter(m=>!m.def.util&&m.def.time);if(!ms.length)return{oee:0,A:0,P:0,Q:0,L:{}};let w=0,o={oee:0,A:0,P:0,Q:0},L={L1:0,L2:0,L3:0,L4:0,L5:0,L6:0};
+ for(const m of ms){const x=oeeOf(m),k=m.def.cost;w+=k;o.oee+=x.oee*k;o.A+=x.A*k;o.P+=x.P*k;o.Q+=x.Q*k;for(const j in L)L[j]+=x.L[j]*k}for(const j in o)o[j]/=w;for(const j in L)L[j]/=w;o.L=L;return o}
+function lossHTML(){const tracked=roadDone().track,P=plantOEE(),pct=v=>(v*100).toFixed(1)+'%';
+ if(!tracked)return `<div class="card"><h4>📉 Six big losses</h4><div class="mut">You are not tracking losses yet. Untracked plants typically run at only 60–65% OEE without knowing where the time goes. Install loss tracking (first step of the improvement roadmap) to see availability, performance and quality for every machine.</div>
+  <div class="kpis" style="margin-top:8px"><div class="kpi"><span>Plant OEE</span><b>≈ ?</b></div><div class="kpi"><span>Breakdowns now</span><b>${machines.filter(m=>m.broken).length}</b></div></div><div class="row"><button class="btn gold" data-rd="track" ${G.money<ROAD[0].c?'disabled':''}>📊 Install loss tracking · ${money(ROAD[0].c)}</button></div></div>`;
+ const C=capacity(),rated=C.flow/Math.max(.01,P.A*P.P);const lots=k=>rated*P.L[k]/100;const margin=420;
+ const order=['L1','L2','L3','L4','L5','L6'],mx=Math.max(...order.map(k=>P.L[k]),1);
+ let h=`<div class="kpis"><div class="kpi"><span>Plant OEE</span><b class="${P.oee<.6?'down':P.oee>.8?'up':''}">${pct(P.oee)}</b></div><div class="kpi"><span>Availability</span><b>${pct(P.A)}</b></div><div class="kpi"><span>Performance</span><b>${pct(P.P)}</b></div><div class="kpi"><span>Quality</span><b>${pct(P.Q)}</b></div></div>
+ <div class="card"><h4>Where the output goes</h4><div class="mut">OEE = Availability × Performance × Quality. Each bar is the share of rated time or output lost (cost-weighted across machines), with its value per month.</div>
+ ${order.map(k=>`<div class="capr"><span><b style="color:${k<'L3'?'#3b82f6':k<'L5'?'#f59e0b':'#ef476f'}">${k}</b> ${LOSSN[k]}</span><div class="bar2"><i style="width:${P.L[k]/mx*100}%;background:${k<'L3'?'#3b82f6':k<'L5'?'#f59e0b':'#ef476f'}"></i></div><b>${P.L[k].toFixed(1)}%</b></div><div class="mut" style="margin:-4px 0 6px 200px;font-size:11px">${LOSSD[k]} · ≈ ${short(lots(k)*30*margin)}/mo</div>`).join('')}</div>
+ <div class="card"><h4>Machines by OEE</h4><table class="fs mt"><tr><th>Machine</th><th>OEE</th><th>A</th><th>P</th><th>Q</th><th>Biggest loss</th><th>Next upgrade</th></tr>${machines.filter(m=>!m.def.util&&m.def.time).map(m=>[m,oeeOf(m)]).sort((a,b)=>a[1].oee-b[1].oee).map(([m,x])=>{const big=Object.entries(x.L).sort((a,b)=>b[1]-a[1])[0];return `<tr><td>${esc(m.name)} <span class="mut">L${m.level}</span></td><td><b class="${x.oee<.6?'down':''}">${pct(x.oee)}</b></td><td>${pct(x.A)}</td><td>${pct(x.P)}</td><td>${pct(x.Q)}</td><td>${big[0]} ${LOSSN[big[0]]} ${big[1].toFixed(1)}%</td><td>${m.level>=5?'✓ max':`<button class="btn sm ghost" data-up="${m.id}" title="${esc(LADDER[m.level+1].d)}">L${m.level+1} ${esc(LADDER[m.level+1].n)} · ${short(upCostF(m))}</button>`}</td></tr>`}).join('')}</table></div>`;
+ return h}
+function roadHTML(){const done=roadDone(),nx=nextRoad();return `<div class="card"><h4>🧭 Plant improvement roadmap</h4><div class="mut">Proven loss-reduction programmes, done in order: each builds on the one before.</div>${ROAD.map((r,i)=>{const d=done[r.id],cur=nx&&nx.id===r.id;return `<div class="road${d?' done':cur?' cur':' lock'}"><i>${d?'✓':i+1}</i><div><b>${r.n}</b><div class="mut">${r.d}</div>${cur?`<button class="btn sm gold" data-rd="${r.id}" ${G.money<r.c?'disabled':''}>Start · ${money(r.c)}</button>`:d?'':`<span class="mut">🔒 After “${ROAD[i-1].n}” · ${money(r.c)}</span>`}</div></div>`}).join('')}</div>
+ <div class="card"><h4>🔧 Machine upgrade ladder</h4><div class="mut">Every machine climbs the same five levels in order. Open a machine, or use the buttons in the Losses table.</div>${LADDER.map((l,i)=>!l?(i===1?`<div class="road done"><i>1</i><div><b>Standard machine</b><div class="mut">As delivered</div></div></div>`:''):`<div class="road"><i>${i}</i><div><b>${l.n}</b> <span class="mut">· ${Math.round(l.k*100)}% of machine price</span><div class="mut">${l.d}</div></div></div>`).join('')}</div>`}
+function startRoad(id){const r=ROAD.find(x=>x.id===id),nx=nextRoad();if(!r||!nx||nx.id!==id){toast('Finish the earlier steps first');return}if(G.money<r.c){toast('Not enough cash');return}G.money-=r.c;book('research',-r.c);roadDone()[id]=1;toast('🧭 '+r.n+' in place');banner('Improvement complete',r.n);renderTab()}
 
 // ---------------------------------------------------------------------
 // BOOT
